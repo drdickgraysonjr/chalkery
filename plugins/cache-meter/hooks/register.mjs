@@ -13,6 +13,7 @@
 // it never depends on them. When a /handoff command exists in the session, the
 // cold-send question offers it.
 
+import { joinBand } from './band.mjs'
 import { rewriteCost, requestCost, totalInput, cachedShare, priceFor } from './pricing.mjs'
 import { tokens, usd } from './fmt.mjs'
 
@@ -467,8 +468,8 @@ export function register(on) {
     // Every part, the button too, is set off from the next by the same dim bar
     const row = parts.flatMap((p, i) => i ? [Text({ key: `bar${i}`, dimColor: true, children: ['│'] }), p] : [p])
     const mine = Box({ key: 'cache-meter', flexDirection: 'row', columnGap: 1, children: row })
-    // Half a row to the bands below: a whole row reads as an empty paragraph
-    return Box({ key: 'cache-meter-stack', flexDirection: 'column', rowGap: 0.5, children: below ? [mine, below] : [mine] })
+    // Its own place in the band the mods of this repo share, whatever order they loaded in
+    return joinBand(Box, 'cache-meter', mine, below)
   })
 
   // A short label in the footer, only when there's something to act on

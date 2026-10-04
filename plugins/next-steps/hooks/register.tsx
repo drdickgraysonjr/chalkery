@@ -10,6 +10,7 @@
 // сесії ($.command.list), тож пропозиція може бути «/скіл аргументи».
 // Форк anthropics/claude-plugins-community/next-steps@87c843d: там fork ішов після кожного ходу.
 
+import { joinBand } from './band.mjs'
 import { atom, read, update } from 'claude-code'
 import type { CommandInfo, Hook, Register, RenderElement } from 'claude-code'
 
@@ -300,11 +301,7 @@ export const register: Register = (on, options) => {
       )
     }
 
-    return (
-      <Box flexDirection="column">
-        {below}
-        {mine}
-      </Box>
-    )
+    // Своє місце в спільній смузі модів цього репо, хоч би в якому порядку їх завантажено.
+    return joinBand(Box, 'next-steps', mine, below)
   })
 }

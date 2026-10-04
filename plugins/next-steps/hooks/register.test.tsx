@@ -1,6 +1,53 @@
 import { describe, expect, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
+// Сусідні моди репо: кожен вкладає свій рядок у спільну смугу так само, як справжній.
+const fakeHandoffRelay = {
+  name: 'handoff-relay',
+  register: (on: On) => {
+    on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+      // Плагін тесту живе в окремому середовищі без імпортів, тож злиття смуги тут своє, за тим самим договором
+      const below = (await next(e)) as { type?: string; props?: { key?: string }; children?: unknown[] } | null
+      const { Box, Text } = $.ui.resolve(e)
+      const place = (row: { props?: { key?: string } }) => Number(String(row.props?.key ?? '').split(':')[1] ?? 999)
+      const rows = (below?.type === 'Box' && below.props?.key === 'prompt-band'
+        ? [...(below.children ?? [])]
+        : below ? [Box({ key: 'prompt-band-row:999:other', flexDirection: 'column', children: [below as never] })] : []) as { props?: { key?: string } }[]
+      rows.push(Box({ key: 'prompt-band-row:10:handoff-relay', flexDirection: 'column', children: [Text({ children: ['handoff-relay'] })] }))
+      rows.sort((a, b) => place(a) - place(b))
+      return Box({ key: 'prompt-band', flexDirection: 'column', rowGap: 0.5, children: rows as never[] })
+    })
+  },
+}
+const fakeCacheMeterBand = {
+  name: 'cache-meter',
+  register: (on: On) => {
+    on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+      // Плагін тесту живе в окремому середовищі без імпортів, тож злиття смуги тут своє, за тим самим договором
+      const below = (await next(e)) as { type?: string; props?: { key?: string }; children?: unknown[] } | null
+      const { Box, Text } = $.ui.resolve(e)
+      const place = (row: { props?: { key?: string } }) => Number(String(row.props?.key ?? '').split(':')[1] ?? 999)
+      const rows = (below?.type === 'Box' && below.props?.key === 'prompt-band'
+        ? [...(below.children ?? [])]
+        : below ? [Box({ key: 'prompt-band-row:999:other', flexDirection: 'column', children: [below as never] })] : []) as { props?: { key?: string } }[]
+      rows.push(Box({ key: 'prompt-band-row:20:cache-meter', flexDirection: 'column', children: [Text({ children: ['cache-meter'] })] }))
+      rows.sort((a, b) => place(a) - place(b))
+      return Box({ key: 'prompt-band', flexDirection: 'column', rowGap: 0.5, children: rows as never[] })
+    })
+  },
+}
+const BAND_ORDER = [
+  'prompt-band-row:10:handoff-relay',
+  'prompt-band-row:20:cache-meter',
+  'prompt-band-row:30:next-steps',
+  'prompt-band-row:999:other',
+]
+const bandKeys = async (ui: { drawn: () => Promise<unknown> }) => {
+  const tree = (await ui.drawn()) as { props?: { key?: string }; children?: { props?: { key?: string } }[] }
+  expect(tree.props?.key).toBe('prompt-band')
+  return (tree.children ?? []).map((row) => row.props?.key)
+}
+
 // Рушій під плагінами завжди щось малює над полем вводу; мод має це лишити.
 const engineRow = (on: On) => {
   on('ui.render', ($, e) => {
@@ -101,6 +148,17 @@ for (const surface of SURFACES) {
       expect(w.forks.length).toBe(0)
       expect(await ui.find({ text: /engine row/ })).toBeDefined()
     })
+
+    for (const order of [[fakeHandoffRelay, fakeCacheMeterBand], [fakeCacheMeterBand, fakeHandoffRelay]]) {
+      test(`спільна смуга: «Що далі?» під кешем, хоч би як завантажились сусіди (${order.map((p) => p.name).join(', ')})`, { plugins: order }, async ($, on) => {
+        engine(on)
+        await $.turn.complete(turnEnd)
+        const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
+        expect(await bandKeys(ui)).toEqual(BAND_ORDER)
+        // Рядки смуги розсунуто на пів рядка, не на цілий порожній
+        expect((await ui.find({ key: 'prompt-band' }))?.props.rowGap).toBe(0.5)
+      })
+    }
 
     test('коротка відповідь кнопки не дає', async ($, on) => {
       engine(on)

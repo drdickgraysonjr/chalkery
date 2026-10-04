@@ -1,3 +1,4 @@
+import { joinBand } from './band.mjs'
 import { atom, read, update } from 'claude-code'
 import type { Hook, Register } from 'claude-code'
 
@@ -92,7 +93,7 @@ export const register: Register = on => {
       return next(e)
     }
 
-    // Те, що малюють моди під нами (наприклад, смуга cache-meter), лишається під кнопкою.
+    // Те, що малюють моди під нами (наприклад, смуга cache-meter), лишається в смузі.
     const below = await next(e)
     const { Box, Button, Text } = $.ui.resolve(e)
     const used = await read($, tokens)
@@ -177,12 +178,7 @@ export const register: Register = on => {
       )
     }
 
-    // Пів рядка між своїм рядком і смугами модів під ним: цілий рядок виглядає як порожній абзац.
-    return (
-      <Box key="handoff-stack" flexDirection="column" rowGap={0.5}>
-        {mine}
-        {below}
-      </Box>
-    )
+    // Своє місце в спільній смузі модів цього репо, хоч би в якому порядку їх завантажено.
+    return joinBand(Box, 'handoff-relay', mine, below)
   })
 }
