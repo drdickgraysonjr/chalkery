@@ -1,5 +1,17 @@
-import { describe, expect, test } from 'claude-code/testing'
+import { describe, expect, test as kitTest } from 'claude-code/testing'
 import type { On } from 'claude-code'
+import en from './locales/en.mjs'
+import uk from './locales/uk.mjs'
+
+// Тести нижче писано під українські написи: мова мода тут uk, якщо тест не задав іншу
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const test = (name: string, ...rest: any[]) =>
+  rest.length === 1
+    ? kitTest(name, { options: { language: 'uk' } }, rest[0])
+    : kitTest(name, { ...rest[0], options: { language: 'uk', ...rest[0].options } }, rest[1])
+
+const ukrainianConfig = (on: On) =>
+  on('config.list', () => ({ value: [{ key: 'language', label: 'Language', kind: 'text', value: 'українська', provider: { kind: 'engine' }, isLocked: false }] }) as never)
 
 // Сусідні моди репо: кожен вкладає свій рядок у спільну смугу так само, як справжній.
 const fakeHandoffRelay = {
@@ -317,3 +329,7 @@ for (const surface of SURFACES) {
     })
   })
 }
+
+kitTest('переклади: в en і uk однаковий набір ключів', async () => {
+  expect(Object.keys(uk).sort()).toEqual(Object.keys(en).sort())
+})

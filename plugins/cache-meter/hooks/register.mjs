@@ -28,8 +28,10 @@ const LOCALES = { en, uk }
 // The words the person sees, in the language the `language` option picks (auto: Claude's own)
 let L = en
 let language = 'auto'
+let isLanguagePicked = false
 
 async function pickLanguage($) {
+  isLanguagePicked = true
   let rows = []
   if (language !== 'en' && language !== 'uk') {
     try {
@@ -259,6 +261,7 @@ function parseTokens(text) {
 
 export function register(on, options) {
   language = options && options.language
+  if (language === 'en' || language === 'uk') L = LOCALES[language]
 
   on('session.start', async ($, e, next) => {
     now = await $.clock.now()
@@ -446,6 +449,7 @@ export function register(on, options) {
     const below = await next(e)
     if (e.props && e.props.hasSurvey) return below
     if (!S.lastActivity && !S.keepWarm) return below
+    if (!isLanguagePicked) await pickLanguage($)
     now = await $.clock.now()
     const { Box, Text, Button } = $.ui.resolve(e)
     const st = cacheState()

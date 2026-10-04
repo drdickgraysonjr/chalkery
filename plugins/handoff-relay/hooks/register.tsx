@@ -1,4 +1,7 @@
 import { joinBand } from './band.mjs'
+import { isLanguageKey, resolveLanguage } from './i18n.mjs'
+import en from './locales/en.mjs'
+import uk from './locales/uk.mjs'
 import { atom, read, update } from 'claude-code'
 import type { Hook, Register } from 'claude-code'
 
@@ -11,12 +14,27 @@ const THRESHOLD = 180_000
 // 'run' запускає /handoff одразу; 'fill' лише вставляє його в поле вводу, а Enter натискає людина.
 const MODE = 'run' as 'run' | 'fill'
 
-// Картка сама сесію не запускає: людина тисне кнопку на ній.
-const LAUNCH_HINT = 'Запускай через Start locally або іншу кнопку на картці.'
-
 // Стан мода cache-meter, якщо його встановлено. Мод без нього працює: значення просто немає.
 const cacheMeter = { plugin: 'cache-meter', key: 'cache' } as const
 type Engine = Parameters<Hook<'ui.render'>>[0]
+
+// Написи мовою, яку обирає опція language (auto: мова відповідей Claude з /config).
+const LOCALES = { en, uk }
+let L = en
+let language: unknown = 'auto'
+let isLanguagePicked = false
+const pickLanguage = async ($: Engine) => {
+  isLanguagePicked = true
+  let rows: readonly { key: string; value: unknown }[] = []
+  if (language !== 'en' && language !== 'uk') {
+    try {
+      rows = await $.config.list()
+    } catch {
+      rows = [] // /config тут немає (тест, запуск -p): англійська
+    }
+  }
+  L = LOCALES[resolveLanguage(language, rows)]
+}
 // Чужий ключ не типізований у нашому контракті, тому приводимо сигнатуру на місці виклику.
 type GetCacheMeter = (ref: typeof cacheMeter) => Promise<{ value?: CacheMeterView }>
 const readCacheMeter = async ($: Engine): Promise<CacheMeterView | null> => {
@@ -37,12 +55,16 @@ const markHandedOff = async ($: Engine, title: unknown, result: { deny?: unknown
   const isCreated = result.deny === undefined && result.isError !== true
 
   if (isCreated && (await read($, isHandoffTurn))) {
-    await update($, handedOff, () => (typeof title === 'string' && title ? title : 'наступна фаза'))
+    await update($, handedOff, () => (typeof title === 'string' && title ? title : L.nextPhase))
   }
 }
 
-export const register: Register = on => {
+export const register: Register = (on, options) => {
+  language = options.language
+  if (language === 'en' || language === 'uk') L = LOCALES[language]
+
   on('session.start', async ($, e, next) => {
+    await pickLanguage($)
     const usage = await $.session.usage()
     await update($, tokens, () => usage.context.tokens ?? null)
 
@@ -55,6 +77,16 @@ export const register: Register = on => {
     }
 
     return next(e)
+  })
+
+  // Мову Claude змінили в /config: під auto мод іде за нею.
+  on('config.set', async ($, e, next) => {
+    const result = await next(e)
+    if (isLanguageKey(e.key)) {
+      await pickLanguage($)
+      $.ui.invalidate('ui.render')
+    }
+    return result
   })
 
   // /handoff, набраний вручну, відкриває хід хендофу так само, як кнопка.
@@ -95,6 +127,7 @@ export const register: Register = on => {
 
     // Те, що малюють моди під нами (наприклад, смуга cache-meter), лишається в смузі.
     const below = await next(e)
+    if (!isLanguagePicked) await pickLanguage($)
     const { Box, Button, Text } = $.ui.resolve(e)
     const used = await read($, tokens)
     const pending = await read($, isPending)
@@ -104,9 +137,9 @@ export const register: Register = on => {
     // Суму показує рядок cache-meter; тут лише що вона означає для хендофу.
     const coldHint =
       cache?.isBig && cache.kind === 'cooling'
-        ? ' Кеш скоро охолоне: передавати зараз дешевше'
+        ? L.cooling
         : cache?.kind === 'cold' && cache.isBig
-          ? ' Кеш охолов: хендоф коштуватиме як звичайне повідомлення'
+          ? L.cold
           : null
     const isHeavy = (used !== null && used >= THRESHOLD) || coldHint !== null
 
@@ -114,26 +147,26 @@ export const register: Register = on => {
 
     if (done !== null) {
       // Одним рядком, якщо влазить; інакше підказка йде другим рядком, а не рветься посеред слова.
-      const head = `Handoff створено: ${done}.`
-      const isOneLine = head.length + 1 + LAUNCH_HINT.length <= e.props.bodyColumns
+      const head = `${L.created}${done}.`
+      const isOneLine = head.length + 1 + L.launchHint.length <= e.props.bodyColumns
 
       mine = (
         <Box key="handed-off" flexDirection={isOneLine ? 'row' : 'column'}>
           <Text>
-            <Text dimColor>Handoff створено: </Text>
+            <Text dimColor>{L.created}</Text>
             <Text bold>{done}</Text>
             <Text dimColor>.</Text>
           </Text>
           <Text dimColor wrap="wrap">
             {isOneLine ? ' ' : ''}
-            {LAUNCH_HINT}
+            {L.launchHint}
           </Text>
         </Box>
       )
     } else if (pending) {
       mine = (
         <Box key="handoff-pending">
-          <Text dimColor>Handoff: пишу документ і картку наступної фази…</Text>
+          <Text dimColor>{L.pending}</Text>
         </Box>
       )
     } else {
@@ -158,17 +191,17 @@ export const register: Register = on => {
         } catch (error) {
           await update($, isPending, () => false)
           await update($, isHandoffTurn, () => false)
-          $.ui.toast(`Handoff не запустився: ${String(error)}`)
+          $.ui.toast(L.failed(String(error)))
         }
       }
 
-      const hint = coldHint ?? (isHeavy ? ` Контекст ${Math.round((used ?? 0) / 1000)}k, час передавати` : null)
+      const hint = coldHint ?? (isHeavy ? L.heavy(Math.round((used ?? 0) / 1000)) : null)
 
       mine = (
         <Box key="handoff-row">
           <Button
             key="handoff"
-            label="Handoff"
+            label={L.button}
             variant={isHeavy ? 'primary' : undefined}
             dimColor={!isHeavy}
             onPress={press}

@@ -15,6 +15,18 @@
     "ui"
   ],
   "userConfig": {
+    "language": {
+      "type": "string",
+      "title": "Language / Мова",
+      "description": "auto follows Claude's response language from /config; en or uk set it explicitly. auto бере мову відповідей Claude з /config; en чи uk задають її явно.",
+      "required": false,
+      "default": "auto",
+      "options": [
+        "auto",
+        "en",
+        "uk"
+      ]
+    },
     "minAnswerChars": {
       "type": "number",
       "title": "Найкоротша відповідь, після якої є кнопка",
