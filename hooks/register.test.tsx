@@ -11,6 +11,11 @@ const props = {
   view: {},
 }
 
+const SPAWN = 'mcp__ccd_session__spawn_task' as const
+const TITLE = 'Естафета хендофів H3'
+
+const turnEnd = { answer: '', durationMs: 1, isAborted: false, turnId: 't', reason: 'answer' as const }
+
 const measure = (tokens: number) => ({
   context: { tokens, window: 1_000_000 },
   rateLimits: [],
@@ -46,7 +51,7 @@ for (const surface of SURFACES) {
         runs.push(e.command)
         return { text: '' }
       })
-      on('turn.complete', () => ({}))
+      on('turn.complete', () => ({ text: '' }))
       const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
 
       await ui.press({ key: 'handoff' })
@@ -66,6 +71,71 @@ for (const surface of SURFACES) {
 
       expect(await ui.find({ key: 'handoff' })).toBeUndefined()
       expect(await ui.find({ text: /опитування/ })).toBeDefined()
+    })
+    test('картка в ході хендофу прибирає кнопку до кінця сесії', async ($, on) => {
+      on('command.run', () => ({ text: '' }))
+      on('tool.call', { tool: SPAWN }, () => ({ result: 'created' }))
+      on('turn.complete', () => ({ text: '' }))
+      const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
+
+      await ui.press({ key: 'handoff' })
+      await $.tool.call({ tool: SPAWN, title: TITLE, prompt: 'p', tldr: 't' })
+      await $.turn.complete(turnEnd)
+
+      expect(await ui.find({ key: 'handoff' })).toBeUndefined()
+      expect((await ui.find({ text: /Handoff зроблено/ }))?.text).toContain(TITLE)
+    })
+
+    test('/handoff, набраний вручну, теж передає фазу', async ($, on) => {
+      on('command.run', () => ({ text: '' }))
+      on('tool.call', { tool: SPAWN }, () => ({ result: 'created' }))
+      on('turn.complete', () => ({ text: '' }))
+      const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
+
+      await $.command.run({
+        command: 'handoff', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 },
+      })
+      await $.tool.call({ tool: SPAWN, title: TITLE, prompt: 'p', tldr: 't' })
+      await $.turn.complete(turnEnd)
+
+      expect(await ui.find({ key: 'handoff' })).toBeUndefined()
+      expect(await ui.find({ text: /Handoff зроблено/ })).toBeDefined()
+    })
+
+    test('картка поза хендофом кнопку не прибирає', async ($, on) => {
+      on('tool.call', { tool: SPAWN }, () => ({ result: 'created' }))
+      const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
+
+      await $.tool.call({ tool: SPAWN, title: 'Прибрати мертвий код', prompt: 'p', tldr: 't' })
+
+      expect(await ui.find({ key: 'handoff' })).toBeDefined()
+    })
+
+    test('картка після кінця ходу хендофу кнопку не прибирає', async ($, on) => {
+      on('command.run', () => ({ text: '' }))
+      on('tool.call', { tool: SPAWN }, () => ({ result: 'created' }))
+      on('turn.complete', () => ({ text: '' }))
+      const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
+
+      await ui.press({ key: 'handoff' })
+      await $.turn.complete(turnEnd)
+      await $.tool.call({ tool: SPAWN, title: 'Прибрати мертвий код', prompt: 'p', tldr: 't' })
+
+      expect(await ui.find({ key: 'handoff' })).toBeDefined()
+    })
+
+    test('картка з помилкою: після ходу кнопка повертається', async ($, on) => {
+      on('command.run', () => ({ text: '' }))
+      on('tool.call', { tool: SPAWN }, () => ({ result: 'failed', isError: true }))
+      on('turn.complete', () => ({ text: '' }))
+      const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
+
+      await ui.press({ key: 'handoff' })
+      await $.tool.call({ tool: SPAWN, title: TITLE, prompt: 'p', tldr: 't' })
+      await $.turn.complete(turnEnd)
+
+      expect(await ui.find({ key: 'handoff' })).toBeDefined()
+      expect(await ui.find({ text: /Handoff зроблено/ })).toBeUndefined()
     })
   })
 }
