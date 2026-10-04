@@ -41,6 +41,7 @@ function world($: unknown, on: On, w: World = {}) {
   const forks: number[] = []
   const toasts: string[] = []
   let cacheRead = 200_000
+  let cacheWrite = 0
   on('session.start', () => ({ cwd: '/x' }))
   on('session.model', () => ({ value: MODEL }))
   on('command.register', () => ({ value: {} }) as never)
@@ -58,7 +59,7 @@ function world($: unknown, on: On, w: World = {}) {
   on('tool.call', { tool: 'AskUserQuestion' }, (_$, e) => {
     const q = (e as unknown as { questions: { question: string; options: { label: string }[] }[] }).questions[0]
     asked.push({ question: q.question, options: q.options.map((o) => o.label) })
-    const answer = w.answer ?? 'Send anyway'
+    const answer = w.answer ?? 'Надіслати все одно'
     return { result: { questions: [q], answers: { [q.question]: answer } } } as never
   })
   on('session.compact', () => ({}) as never)
@@ -71,7 +72,7 @@ function world($: unknown, on: On, w: World = {}) {
       answer: '',
       toolUses: [],
       stopReason: 'end_turn',
-      usage: { input_tokens: 10, output_tokens: 10, cache_read_input_tokens: cacheRead, cache_creation_input_tokens: 0, model: MODEL },
+      usage: { input_tokens: 10, output_tokens: 10, cache_read_input_tokens: cacheRead, cache_creation_input_tokens: cacheWrite, model: MODEL },
     } as never
   })
   on('model.fork', () => {
@@ -86,6 +87,9 @@ function world($: unknown, on: On, w: World = {}) {
     toasts,
     setRead: (n: number) => {
       cacheRead = n
+    },
+    setWrite: (n: number) => {
+      cacheWrite = n
     },
   }
 }
@@ -120,7 +124,7 @@ for (const surface of SURFACES) {
       const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
 
       const row = await ui.find({ key: 'cache-meter' })
-      expect(row?.text).toMatch(/^● cache warm 60m │ ctx 200k │ rewrite ≈ \$1\.60 │ session \$0$/)
+      expect(row?.text).toMatch(/^● кеш теплий ще 60 хв │ контекст 200k │ перезапис ≈ \$1\.60 │ сесія \$0$/)
       expect(await ui.find({ text: /^engine row$/ })).toBeDefined()
     })
 
@@ -141,10 +145,10 @@ for (const surface of SURFACES) {
       const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
 
       const text = (await ui.find({ key: 'cache-meter' }))?.text ?? ''
-      expect(text).toContain('ctx 108k')
-      expect(text).toContain('rewrite ≈ $0.86')
-      expect(text).toContain('│ 5h 9% · week 59% │')
-      expect(text).toContain('session $0.92')
+      expect(text).toContain('контекст 108k')
+      expect(text).toContain('перезапис ≈ $0.86')
+      expect(text).toContain('│ ліміти: 5 год 9% · тиждень 59% │')
+      expect(text).toContain('сесія $0.92')
     })
 
     test('до першого запиту смуги немає, лишається рядок рушія', async ($, on) => {
@@ -175,8 +179,8 @@ for (const surface of SURFACES) {
       await w.clk.advance(61 * MIN)
       const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
 
-      expect(await ui.find({ text: /^○ cache cold 1m$/ })).toBeDefined()
-      const rewrite = await ui.find({ text: /^ │ next send rewrites it ≈ \$1\.60$/ })
+      expect(await ui.find({ text: /^○ кеш охолов 1 хв тому$/ })).toBeDefined()
+      const rewrite = await ui.find({ text: /^ │ наступне повідомлення перезапише його ≈ \$1\.60$/ })
       expect(rewrite).toBeDefined()
       expect(rewrite?.props.color).toBe('red')
     })
@@ -192,8 +196,8 @@ for (const surface of SURFACES) {
       expect(w.forks.length).toBe(1)
       const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
 
-      expect(await ui.find({ text: /^◆ kept warm · 1 ping \$0\.0\d · until / })).toBeDefined()
-      expect((await ui.find({ key: 'keepwarm' }))?.props.label).toBe('stop warm')
+      expect(await ui.find({ text: /^◆ тримаю кеш теплим до \d{1,2}:\d\d · 1 пінг \$0\.0\d$/ })).toBeDefined()
+      expect((await ui.find({ key: 'keepwarm' }))?.props.label).toBe('не тримати')
     })
   })
 }
@@ -215,40 +219,40 @@ test('/cache big піднімає поріг: isBig у стані гасне', {
   await start($)
   await step($)
   const r = (await $.command.run({ command: 'cache', args: 'big 300k', ...typed })) as { text: string }
-  expect(r.text).toContain('Cold-send guard: on for contexts over 300k tokens')
+  expect(r.text).toContain('Питання перед відправкою в охололий кеш: увімкнено, для контексту від 300k токенів')
   expect((await state($)).isBig).toBe(false)
 })
 
 test('холодна відправка з /handoff у сесії: варіант Handoff скасовує надсилання і запускає /handoff', async ($, on) => {
-  const w = world($, on, { commands: ['handoff', 'cache'], answer: 'Run /handoff instead' })
+  const w = world($, on, { commands: ['handoff', 'cache'], answer: 'Запустити /handoff' })
   await start($)
   await step($)
   await w.clk.advance(61 * MIN)
   const r = (await submit($)) as { drop?: string }
 
   expect(w.asked.length).toBe(1)
-  expect(w.asked[0].options).toEqual(['Send anyway', 'Compact first, then send', 'Run /handoff instead', 'Cancel'])
-  expect(r.drop).toContain('running /handoff')
+  expect(w.asked[0].options).toEqual(['Надіслати все одно', 'Стиснути й надіслати', 'Запустити /handoff', 'Скасувати'])
+  expect(r.drop).toContain('запускаю /handoff')
   expect(w.runs).not.toContain('handoff')
   await w.clk.advance(100)
   expect(w.runs).toContain('handoff')
 })
 
-test('холодна відправка без /handoff: варіанта немає, Cancel скасовує', async ($, on) => {
-  const w = world($, on, { commands: ['cache'], answer: 'Cancel' })
+test('холодна відправка без /handoff: варіанта немає, «Скасувати» скасовує', async ($, on) => {
+  const w = world($, on, { commands: ['cache'], answer: 'Скасувати' })
   await start($)
   await step($)
   await w.clk.advance(61 * MIN)
   const r = (await submit($)) as { drop?: string }
 
-  expect(w.asked[0].options).toEqual(['Send anyway', 'Compact first, then send', 'Cancel'])
-  expect(r.drop).toContain('Cancelled by cache-meter')
+  expect(w.asked[0].options).toEqual(['Надіслати все одно', 'Стиснути й надіслати', 'Скасувати'])
+  expect(r.drop).toContain('Скасовано: cache-meter')
   await w.clk.advance(100)
   expect(w.runs).not.toContain('handoff')
 })
 
-test('холодна відправка: Send anyway пропускає текст як є', async ($, on) => {
-  const w = world($, on, { commands: ['handoff'], answer: 'Send anyway' })
+test('холодна відправка: «Надіслати все одно» пропускає текст як є', async ($, on) => {
+  const w = world($, on, { commands: ['handoff'], answer: 'Надіслати все одно' })
   await start($)
   await step($)
   await w.clk.advance(61 * MIN)
@@ -260,7 +264,7 @@ test('холодна відправка: Send anyway пропускає текс
 })
 
 test('теплий кеш або малий контекст: питання немає', async ($, on) => {
-  const w = world($, on, { commands: ['handoff'], answer: 'Cancel' })
+  const w = world($, on, { commands: ['handoff'], answer: 'Скасувати' })
   await start($)
   await step($)
   await w.clk.advance(30 * MIN)
@@ -272,3 +276,30 @@ test('теплий кеш або малий контекст: питання н�
   expect(((await submit($)) as { text?: string }).text).toBe('next task')
   expect(w.asked.length).toBe(0)
 })
+
+for (const surface of SURFACES) {
+  test(`${surface}: відмінювання і години — 2 пінги, 1 год 05 хв, охолов 1 раз`, async ($, on) => {
+    const w = world($, on)
+    await start($)
+    await step($)
+    await $.command.run({ command: 'keepwarm', ...typed })
+    await w.clk.advance(53 * MIN)
+    await w.clk.advance(53 * MIN)
+    expect(w.forks.length).toBe(2)
+    const kept = (await $.command.run({ command: 'cache', ...typed })) as { text: string }
+    expect(kept.text).toContain('поки що 2 пінги на $')
+    expect(kept.text).toContain('кеш живе 60 хв (типово)')
+
+    await $.command.run({ command: 'keepwarm', args: 'off', ...typed })
+    await w.clk.advance(125 * MIN)
+    const cold = (await $.command.run({ command: 'cache', ...typed })) as { text: string }
+    expect(cold.text).toMatch(/Кеш охолов 1 год \d\d хв тому/)
+
+    // наступний запит пише весь контекст у кеш заново
+    w.setRead(0)
+    w.setWrite(200_000)
+    await step($)
+    const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
+    expect(await ui.find({ text: /^ │ охолов 1 раз: \$1\.60$/ })).toBeDefined()
+  })
+}
