@@ -1,5 +1,13 @@
 export type Tokens = number | null
 
+// Те, що handoff-relay читає зі стану мода cache-meter (`cache-meter.cache`), якщо той встановлений.
+// Не оголошуємо його в PluginState: це контракт cache-meter, а не наш.
+export type CacheMeterView = {
+  kind: 'unknown' | 'warm' | 'cooling' | 'cold' | 'kept'
+  isBig: boolean
+  rewriteUsd: number
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'handoff-relay': {
