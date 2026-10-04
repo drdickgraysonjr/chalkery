@@ -92,7 +92,7 @@ function ttlMin() {
 const LIMIT_LABEL = { five_hour: '5 год', seven_day: 'тиждень', spend_limit: 'витрати' }
 
 function limitsText(limits) {
-  return limits.map((l) => `${LIMIT_LABEL[l.kind] || l.kind} ${Math.round(l.percentUsed)}%`).join(' · ')
+  return limits.map((l) => `${LIMIT_LABEL[l.kind] || l.kind} ${Math.round(l.percentUsed)}%`).join(', ')
 }
 
 function limitTone(limits, extra) {
@@ -441,24 +441,26 @@ export function register(on) {
     const ttl = ttlMin()
     const big = isBig()
     const parts = []
-    if (st.kind === 'kept') parts.push(Text({ color: 'cyan', children: [`◆ тримаю кеш теплим до ${clock(S.keepWarmUntil)} · ${pings(S.pings)} ${usd(S.pingUsd)}`] }))
-    else if (st.kind === 'warm') parts.push(Text({ color: 'green', children: [`● кеш теплий ще ${minutes(st.left)}`] }))
+    if (st.kind === 'kept') parts.push(Text({ color: 'cyan', children: [`◆ тримаю кеш теплим до ${clock(S.keepWarmUntil)}, ${pings(S.pings)} ${usd(S.pingUsd)}`] }))
+    // All is well, so only the dot is green and the words stay dim
+    else if (st.kind === 'warm') parts.push(Text({ children: [Text({ color: 'green', children: ['●'] }), Text({ dimColor: true, children: [` кеш теплий ще ${minutes(st.left)}`] })] }))
     else if (st.kind === 'cooling') parts.push(Text({ color: 'yellow', bold: true, children: [`◐ кеш охолоне за ${minutes(st.left)}`] }))
     else if (st.kind === 'cold') parts.push(Text(big ? { color: 'red', bold: true, children: [`○ кеш охолов ${minutes(-st.left)} тому`] } : { dimColor: true, children: [`○ кеш охолов ${minutes(-st.left)} тому`] }))
     const rewrite = usd(rewriteCost(S.ctx, S.model, ttl))
-    if (st.kind === 'cold' && big) parts.push(Text({ color: 'red', children: [` │ наступне повідомлення перекешує ≈ ${rewrite}`] }))
-    else parts.push(Text({ dimColor: true, children: [` │ перекешування коштуватиме ≈ ${rewrite}`] }))
-    if (S.coldRestarts.length) parts.push(Text({ dimColor: true, children: [` │ перекешовано ${restarts()}`] }))
+    if (st.kind === 'cold' && big) parts.push(Text({ color: 'red', children: [`наступне повідомлення перекешує ≈ ${rewrite}`] }))
+    else parts.push(Text({ dimColor: true, children: [`перекешування коштуватиме ≈ ${rewrite}`] }))
+    if (S.coldRestarts.length) parts.push(Text({ dimColor: true, children: [`перекешовано ${restarts()}`] }))
     // Plan limits only when one is close to running out
     const high = S.rateLimits.filter((l) => (l.percentUsed || 0) >= 80)
-    if (high.length) parts.push(Text(limitTone(high, { children: [' │ ліміти: ' + limitsText(high)] })))
-    const row = [Box({ key: 'parts', flexDirection: 'row', children: parts })]
+    if (high.length) parts.push(Text(limitTone(high, { children: ['ліміти: ' + limitsText(high)] })))
+    // A gap, not a separator glyph, between the parts
+    const row = [Box({ key: 'parts', flexDirection: 'row', columnGap: 3, children: parts })]
     if (st.kind === 'cooling' && big) {
-      row.push(Button({ key: 'keepwarm', label: 'тримати теплим', hotkey: '1', plain: true, onPress: async () => { now = await $.clock.now(); startKeepWarm($, settings.keepWarmHours); await publish($); $.ui.invalidate('ui.render') } }))
+      row.push(Button({ key: 'keepwarm', label: 'тримати теплим', hotkey: 'k', plain: true, onPress: async () => { now = await $.clock.now(); startKeepWarm($, settings.keepWarmHours); await publish($); $.ui.invalidate('ui.render') } }))
     } else if (st.kind === 'kept') {
-      row.push(Button({ key: 'keepwarm', label: 'не тримати', hotkey: '1', plain: true, onPress: async () => { now = await $.clock.now(); stopKeepWarm($, 'вимкнено'); await publish($); $.ui.invalidate('ui.render') } }))
+      row.push(Button({ key: 'keepwarm', label: 'не тримати', hotkey: 'k', plain: true, onPress: async () => { now = await $.clock.now(); stopKeepWarm($, 'вимкнено'); await publish($); $.ui.invalidate('ui.render') } }))
     }
-    const mine = Box({ key: 'cache-meter', flexDirection: 'row', columnGap: 2, children: row })
+    const mine = Box({ key: 'cache-meter', flexDirection: 'row', columnGap: 3, children: row })
     return Box({ flexDirection: 'column', children: below ? [mine, below] : [mine] })
   })
 
@@ -476,9 +478,9 @@ function footerLabel() {
   const st = cacheState()
   const big = isBig()
   if (st.kind === 'kept') parts.push('кеш тримаю теплим')
-  else if (st.kind === 'cooling' && big) parts.push(`кеш охолоне за ${minutes(st.left)} · /keepwarm`)
-  else if (st.kind === 'cold' && big) parts.push(`кеш охолов · перекешування коштуватиме ≈ ${usd(rewriteCost(S.ctx, S.model, ttlMin()))}`)
+  else if (st.kind === 'cooling' && big) parts.push(`кеш охолоне за ${minutes(st.left)}, /keepwarm`)
+  else if (st.kind === 'cold' && big) parts.push(`кеш охолов, перекешування коштуватиме ≈ ${usd(rewriteCost(S.ctx, S.model, ttlMin()))}`)
   const high = S.rateLimits.filter((l) => (l.percentUsed || 0) >= 80)
   if (high.length) parts.push('ліміти: ' + limitsText(high))
-  return parts.join(' · ')
+  return parts.join(', ')
 }
