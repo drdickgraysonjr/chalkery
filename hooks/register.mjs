@@ -447,13 +447,17 @@ export function register(on) {
     else if (st.kind === 'cooling') parts.push(Text({ color: 'yellow', bold: true, children: [`◐ кеш охолоне за ${minutes(st.left)}`] }))
     else if (st.kind === 'cold') parts.push(Text(big ? { color: 'red', bold: true, children: [`○ кеш охолов ${minutes(-st.left)} тому`] } : { dimColor: true, children: [`○ кеш охолов ${minutes(-st.left)} тому`] }))
     const rewrite = usd(rewriteCost(S.ctx, S.model, ttl))
-    if (st.kind === 'cold' && big) parts.push(Text({ color: 'red', children: [`наступне повідомлення перекешує ≈ ${rewrite}`] }))
-    else parts.push(Text({ dimColor: true, children: [`перекешування коштуватиме ≈ ${rewrite}`] }))
+    const price = st.kind === 'cold' && big
+      ? Text({ color: 'red', children: [`наступне повідомлення перекешує ≈ ${rewrite}`] })
+      : Text({ dimColor: true, children: [`перекешування коштуватиме ≈ ${rewrite}`] })
+    // The state and its price read as one pair, so a dim bar joins them; the rest is spaced by a gap
+    const state = parts.pop()
+    parts.push(Box({ key: 'state-price', flexDirection: 'row', columnGap: 1, children: [state, Text({ dimColor: true, children: ['│'] }), price] }))
     if (S.coldRestarts.length) parts.push(Text({ dimColor: true, children: [`перекешовано ${restarts()}`] }))
     // Plan limits only when one is close to running out
     const high = S.rateLimits.filter((l) => (l.percentUsed || 0) >= 80)
     if (high.length) parts.push(Text(limitTone(high, { children: ['ліміти: ' + limitsText(high)] })))
-    // A gap, not a separator glyph, between the parts
+    // A gap, not a separator glyph, between the other parts
     const row = [Box({ key: 'parts', flexDirection: 'row', columnGap: 3, children: parts })]
     // Keep warm is on offer whenever there is a warm cache to keep: quiet while there is time,
     // loud once a big cache is about to cool

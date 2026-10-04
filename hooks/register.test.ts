@@ -123,10 +123,13 @@ for (const surface of SURFACES) {
       await step($)
       const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
 
-      // Частини йдуть через проміжок, без роздільника; зелена лише крапка
+      // Стан і ціну зʼєднує сіра паличка, решта частин іде через проміжок; зелена лише крапка
       const parts = await ui.find({ key: 'parts' })
       expect(parts?.props.columnGap).toBe(3)
-      expect(parts?.text).toBe('● кеш теплий ще 60 хвперекешування коштуватиме ≈ $1.60')
+      expect(parts?.text).toBe('● кеш теплий ще 60 хв│перекешування коштуватиме ≈ $1.60')
+      const pair = await ui.find({ key: 'state-price' })
+      expect(pair?.props.columnGap).toBe(1)
+      expect((await ui.find({ text: /^│$/ }))?.props.dimColor).toBe(true)
       expect((await ui.find({ text: /^●$/ }))?.props.color).toBe('green')
       expect((await ui.find({ text: /^ кеш теплий ще 60 хв$/ }))?.props.dimColor).toBe(true)
       expect(await ui.find({ text: /^перекешування коштуватиме ≈ \$1\.60$/ })).toBeDefined()
@@ -156,7 +159,7 @@ for (const surface of SURFACES) {
       const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
 
       const text = (await ui.find({ key: 'parts' }))?.text ?? ''
-      expect(text).toBe('● кеш теплий ще 60 хвперекешування коштуватиме ≈ $0.86')
+      expect(text).toBe('● кеш теплий ще 60 хв│перекешування коштуватиме ≈ $0.86')
       expect(text).not.toContain('контекст')
       expect(text).not.toContain('сесія')
       expect(text).not.toContain('ліміти')
