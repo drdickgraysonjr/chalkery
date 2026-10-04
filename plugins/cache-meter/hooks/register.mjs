@@ -167,7 +167,10 @@ async function registerCommand($, name, description, argumentHint, immediate) {
 async function handoffCommand($) {
   try {
     const commands = await $.command.list()
-    return commands.some((c) => c.name === HANDOFF) ? HANDOFF : null
+    // The person's own /handoff first; else one a plugin brings, which may carry its prefix (handoff-relay:handoff)
+    if (commands.some((c) => c.name === HANDOFF)) return HANDOFF
+    const plugin = commands.find((c) => c.name.endsWith(':' + HANDOFF))
+    return plugin ? plugin.name : null
   } catch {
     return null
   }
@@ -304,7 +307,7 @@ export function register(on, options) {
     if (!settings.guard || !fromUser || !isCold || !isBig() || e.turnId) return next(e)
     const cost = usd(rewriteCost(S.ctx, S.model, ttl))
     const handoff = await handoffCommand($)
-    const handoffLabel = L.runHandoff(HANDOFF)
+    const handoffLabel = L.runHandoff(handoff || HANDOFF)
     const choices = [L.send, L.compact, ...(handoff ? [handoffLabel] : []), L.cancel]
     let answer = L.send
     try {

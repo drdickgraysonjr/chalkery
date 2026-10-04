@@ -8,7 +8,7 @@ Three Claude Code mods that draw a band above the prompt, in the terminal and in
 
 | Mod | What it does |
 | --- | --- |
-| `handoff-relay` | A Handoff button that runs `/handoff`. It lights up from 180k tokens of context. |
+| `handoff-relay` | A Handoff button that runs `/handoff`. It lights up from 180k tokens of context. The mod brings its own `handoff` skill, so the button works out of the box. |
 | `cache-meter` | Shows how long the prompt cache stays warm and what a re-cache would cost. Keep warm stops it from going cold. Before you send into a big cold cache, it asks first. |
 | `next-steps` | A What next? button that suggests up to three next prompts. The one you pick becomes a draft in the input box; you press Enter. |
 
@@ -56,6 +56,10 @@ The mods speak English and Ukrainian. Each has a `language` option: `auto` (the 
 claude plugin install cache-meter@chalkery --config language=uk
 ```
 
+## The handoff skill
+
+`handoff-relay` ships a `handoff` skill. It writes a handoff document for the next session into `.claude/handoffs/` under the project root; if the project's CLAUDE.md names another folder, it uses that. Handoffs form chains: the session that picks one up is titled `<name> H<N>`, and each phase gets its own file. In the desktop app the skill also creates a card that starts the next session; in the terminal it prints the start prompt to paste. If you already have your own `/handoff`, the button runs yours.
+
 ## next-steps options
 
 After install the CLI says that some options are not set. All of them have defaults, so setting them is optional.
@@ -72,6 +76,7 @@ After install the CLI says that some options are not set. All of them have defau
 .claude-plugin/marketplace.json   the catalog: the pack and three mods
 plugins/<mod>/                    each mod stands alone and installs on its own
 plugins/<mod>/hooks/locales/      en.mjs and uk.mjs: every word the mod shows a person
+plugins/handoff-relay/skills/     the handoff skill and its phase script (python3, with tests)
 plugins/primaries/              the pack: only dependencies on the three mods
 shared/band.mjs                   the shared band contract
 shared/i18n.mjs                   picking the language for the language option

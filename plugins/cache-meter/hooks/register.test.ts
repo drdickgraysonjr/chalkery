@@ -349,6 +349,19 @@ test('холодна відправка з /handoff у сесії: варіан�
   expect(w.runs).toContain('handoff')
 })
 
+test('холодна відправка, /handoff лише зі скіла плагіна: варіант запускає його повною назвою', async ($, on) => {
+  const w = world($, on, { commands: ['handoff-relay:handoff', 'cache'], answer: 'Запустити /handoff-relay:handoff' })
+  await start($)
+  await step($)
+  await w.clk.advance(61 * MIN)
+  const r = (await submit($)) as { drop?: string }
+
+  expect(w.asked[0].options).toContain('Запустити /handoff-relay:handoff')
+  expect(r.drop).toContain('запускаю /handoff-relay:handoff')
+  await w.clk.advance(100)
+  expect(w.runs).toContain('handoff-relay:handoff')
+})
+
 test('холодна відправка без /handoff: варіанта немає, «Скасувати» скасовує', async ($, on) => {
   const w = world($, on, { commands: ['cache'], answer: 'Скасувати' })
   await start($)

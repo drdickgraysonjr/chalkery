@@ -149,6 +149,24 @@ for (const surface of SURFACES) {
       expect(await ui.find({ text: /пишу документ/ })).toBeDefined()
     })
 
+    for (const [names, expected] of [
+      [['handoff-relay:handoff'], 'handoff-relay:handoff'],
+      [['handoff', 'handoff-relay:handoff'], 'handoff'],
+    ] as const) {
+      test(`команди ${names.join(', ')}: кнопка запускає ${expected}`, async ($, on) => {
+        engineRow(on)
+        on('command.list', () => ({ value: names.map((name) => ({ name, description: '', source: 'skills' })) }) as never)
+        const runs: string[] = []
+        on('command.run', (_$, e) => {
+          runs.push(e.command)
+          return { text: '' }
+        })
+        const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
+        await ui.press({ key: 'handoff' })
+        expect(runs).toEqual([expected])
+      })
+    }
+
     test('під опитуванням смуга віддає місце', async ($, on) => {
       on('ui.render', ($, e) => {
         const { Text } = $.ui.resolve(e)

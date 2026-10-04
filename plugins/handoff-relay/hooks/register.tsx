@@ -45,6 +45,18 @@ const readCacheMeter = async ($: Engine): Promise<CacheMeterView | null> => {
   }
 }
 
+// Свій /handoff людини має перевагу; інакше скіл, що йде з цим модом. Скіл плагіна рушій
+// може назвати з префіксом (handoff-relay:handoff), тож шукаємо обидві назви.
+const HANDOFF_NAMES = ['handoff', 'handoff-relay:handoff']
+const handoffCommand = async ($: Engine): Promise<string> => {
+  try {
+    const names = (await $.command.list()).map(command => command.name)
+    return names.includes('handoff') ? 'handoff' : (names.find(name => name.endsWith(':handoff')) ?? 'handoff')
+  } catch {
+    return 'handoff'
+  }
+}
+
 const tokens = atom({ plugin: 'handoff-relay', key: 'tokens' } as const, null as Tokens)
 const isPending = atom({ plugin: 'handoff-relay', key: 'isPending' } as const, false)
 const isHandoffTurn = atom({ plugin: 'handoff-relay', key: 'isHandoffTurn' } as const, false)
@@ -90,7 +102,7 @@ export const register: Register = (on, options) => {
   })
 
   // /handoff, набраний вручну, відкриває хід хендофу так само, як кнопка.
-  on('command.run', { command: 'handoff' }, async ($, e, next) => {
+  on('command.run', { command: HANDOFF_NAMES }, async ($, e, next) => {
     await update($, isHandoffTurn, () => true)
 
     return next(e)
@@ -187,7 +199,7 @@ export const register: Register = (on, options) => {
         await update($, isHandoffTurn, () => true)
 
         try {
-          await $.command.run({ command: 'handoff' })
+          await $.command.run({ command: await handoffCommand($) })
         } catch (error) {
           await update($, isPending, () => false)
           await update($, isHandoffTurn, () => false)
