@@ -330,6 +330,32 @@ for (const surface of SURFACES) {
   })
 }
 
+for (const surface of SURFACES) {
+  test(`${surface}: language en — кнопка англійською`, { options: { language: 'en' } }, async ($, on) => {
+    engine(on)
+    await $.turn.complete(turnEnd)
+    const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
+    expect((await ui.find({ key: 'ask' }))?.props.label).toBe('What next?')
+  })
+
+  test(`${surface}: language auto без /config — англійська`, { options: { language: 'auto' } }, async ($, on) => {
+    engine(on)
+    await $.turn.complete(turnEnd)
+    const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
+    expect((await ui.find({ key: 'ask' }))?.props.label).toBe('What next?')
+  })
+
+  test(`${surface}: language auto, у /config українська — українська`, { options: { language: 'auto' } }, async ($, on) => {
+    engine(on)
+    ukrainianConfig(on)
+    await $.turn.complete(turnEnd)
+    const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
+    expect((await ui.find({ key: 'ask' }))?.props.label).toBe('Що далі?')
+  })
+}
+
 kitTest('переклади: в en і uk однаковий набір ключів', async () => {
-  expect(Object.keys(uk).sort()).toEqual(Object.keys(en).sort())
+  const keys = (o: object): string[] =>
+    Object.entries(o).flatMap(([k, v]) => (v && typeof v === 'object' ? keys(v).map((n) => `${k}.${n}`) : [k])).sort()
+  expect(keys(uk)).toEqual(keys(en))
 })

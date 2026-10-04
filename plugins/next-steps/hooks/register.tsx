@@ -11,6 +11,9 @@
 // Форк anthropics/claude-plugins-community/next-steps@87c843d: там fork ішов після кожного ходу.
 
 import { joinBand } from './band.mjs'
+import { isLanguageKey, resolveLanguage } from './i18n.mjs'
+import en from './locales/en.mjs'
+import uk from './locales/uk.mjs'
 import { atom, read, update } from 'claude-code'
 import type { CommandInfo, Hook, Register, RenderElement } from 'claude-code'
 
@@ -156,11 +159,22 @@ const view = atom({ plugin: 'next-steps', key: 'view' } as const, { kind: 'hidde
 const HIDDEN: View = { kind: 'hidden' }
 const READY: View = { kind: 'ready' }
 
-const NO_REPLY: Record<string, string> = {
-  'nothing-to-fork': 'ще немає розмови, з якої підбирати',
-  'api-error': 'API відповів помилкою',
-  'empty-reply': 'модель відповіла порожньо',
-  aborted: 'запит перервано',
+// Написи мовою, яку обирає опція language (auto: мова відповідей Claude з /config).
+const LOCALES = { en, uk }
+let L = en
+let language: unknown = 'auto'
+let isLanguagePicked = false
+const pickLanguage = async ($: Engine) => {
+  isLanguagePicked = true
+  let rows: readonly { key: string; value: unknown }[] = []
+  if (language !== 'en' && language !== 'uk') {
+    try {
+      rows = await $.config.list()
+    } catch {
+      rows = [] // /config тут немає (тест, запуск -p): англійська
+    }
+  }
+  L = LOCALES[resolveLanguage(language, rows)]
 }
 
 // Проміжок між частинами рядка, той самий, що в cache-meter.
@@ -170,7 +184,7 @@ const BUTTON_CHROME = 5
 
 function fitsOneRow(items: readonly Suggestion[], columns: number): boolean {
   const labels = items.reduce((sum, item) => sum + [...item.label].length + BUTTON_CHROME, 0)
-  const width = 'Що далі?'.length + BUTTON_CHROME + labels + 'Сховати'.length + BUTTON_CHROME + GAP * (items.length + 1)
+  const width = [...L.ask].length + BUTTON_CHROME + labels + [...L.dismiss].length + BUTTON_CHROME + GAP * (items.length + 1)
   return width <= columns
 }
 
@@ -203,7 +217,7 @@ async function ask($: Engine, suggestsSkills: boolean): Promise<void> {
     const skills = suggestsSkills && commands !== null ? skillList(commands) : ''
     const reply = await $.model.fork({ prompt: forkPrompt(skills) })
     if (reply.isAnswered) items = parseSuggestions(reply.text, known)
-    else failure = NO_REPLY[reply.reason] ?? reply.reason
+    else failure = (L.noReply as Record<string, string>)[reply.reason] ?? reply.reason
   } catch (error) {
     failure = String(error)
     $.ui.log(`fork failed: ${failure}`)
@@ -212,7 +226,7 @@ async function ask($: Engine, suggestsSkills: boolean): Promise<void> {
   const now = await read($, view)
   if (now.kind !== 'loading' || now.id !== id) return
   if (items.length === 0) {
-    $.ui.toast(failure === null ? 'Що далі: модель не має що запропонувати' : `Що далі: ${failure}`)
+    $.ui.toast(failure === null ? L.nothing : L.failed(failure))
     await update($, view, () => READY)
     return
   }
@@ -224,6 +238,18 @@ async function ask($: Engine, suggestsSkills: boolean): Promise<void> {
 export const register: Register = (on, options) => {
   const minTurnChars = typeof options?.minAnswerChars === 'number' ? options.minAnswerChars : 80
   const suggestsSkills = options?.suggestSkills !== false
+  language = options?.language
+  if (language === 'en' || language === 'uk') L = LOCALES[language]
+
+  // Мову Claude змінили в /config: під auto мод іде за нею.
+  on('config.set', async ($, e, next) => {
+    const result = await next(e)
+    if (isLanguageKey(e.key)) {
+      await pickLanguage($)
+      $.ui.invalidate('ui.render')
+    }
+    return result
+  })
 
   // Новий хід (набраний чи будь-який інший) ховає все, що було запропоновано.
   on('turn.start', async ($, e, next) => {
@@ -244,6 +270,7 @@ export const register: Register = (on, options) => {
     const below = await next(e)
     const current = await read($, view)
     if (e.props.hasSurvey || e.props.isWorking || current.kind === 'hidden') return below
+    if (!isLanguagePicked) await pickLanguage($)
     const { Box, Text, Button } = $.ui.resolve(e)
 
     let mine: RenderElement
@@ -254,14 +281,14 @@ export const register: Register = (on, options) => {
       const price = cache?.kind === 'cold' && cache.isBig ? ` ≈ ${usd(cache.rewriteUsd)}` : null
       mine = (
         <Box key="next-steps-ask">
-          <Button key="ask" label="Що далі?" dimColor onPress={() => ask($, suggestsSkills)} />
+          <Button key="ask" label={L.ask} dimColor onPress={() => ask($, suggestsSkills)} />
           {price !== null ? <Text dimColor>{price}</Text> : null}
         </Box>
       )
     } else if (current.kind === 'loading') {
       mine = (
         <Box key="next-steps-loading">
-          <Text dimColor>Що далі: підбираю…</Text>
+          <Text dimColor>{L.loading}</Text>
         </Box>
       )
     } else {
@@ -274,14 +301,14 @@ export const register: Register = (on, options) => {
           onPress={async () => {
             await update($, view, () => HIDDEN)
             const r = await $.prompt.fill({ text: item.prompt }).catch(() => null)
-            if (r === null || !r.isFilled) $.ui.toast('Не вдалося вставити промпт у поле вводу')
+            if (r === null || !r.isFilled) $.ui.toast(L.fillFailed)
           }}
         />
       ))
       // Та сама кнопка, що й згорнута: натискання згортає список, як і 0.
-      const toggle = <Button key="ask" label="Що далі?" dimColor onPress={() => update($, view, () => READY)} />
+      const toggle = <Button key="ask" label={L.ask} dimColor onPress={() => update($, view, () => READY)} />
       const dismiss = (
-        <Button key="dismiss" hotkey="0" plain label="Сховати" onPress={() => update($, view, () => READY)} />
+        <Button key="dismiss" hotkey="0" plain label={L.dismiss} onPress={() => update($, view, () => READY)} />
       )
       // Влазить в один рядок — один рядок; ні — заголовок із «сховати», під ним пункти.
       mine = fitsOneRow(current.items, e.props.bodyColumns) ? (
