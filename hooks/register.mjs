@@ -441,33 +441,32 @@ export function register(on) {
     const ttl = ttlMin()
     const big = isBig()
     const parts = []
-    if (st.kind === 'kept') parts.push(Text({ color: 'cyan', children: [`◆ тримаю кеш теплим до ${clock(S.keepWarmUntil)}, ${pings(S.pings)} ${usd(S.pingUsd)}`] }))
+    if (st.kind === 'kept') parts.push(Text({ color: 'cyan', children: [`◆ Тримаю кеш теплим до ${clock(S.keepWarmUntil)}, ${pings(S.pings)} ${usd(S.pingUsd)}`] }))
     // All is well, so only the dot is green and the words stay dim
-    else if (st.kind === 'warm') parts.push(Text({ children: [Text({ color: 'green', children: ['●'] }), Text({ dimColor: true, children: [` кеш теплий ще ${minutes(st.left)}`] })] }))
-    else if (st.kind === 'cooling') parts.push(Text({ color: 'yellow', bold: true, children: [`◐ кеш охолоне за ${minutes(st.left)}`] }))
-    else if (st.kind === 'cold') parts.push(Text(big ? { color: 'red', bold: true, children: [`○ кеш охолов ${minutes(-st.left)} тому`] } : { dimColor: true, children: [`○ кеш охолов ${minutes(-st.left)} тому`] }))
+    else if (st.kind === 'warm') parts.push(Text({ children: [Text({ color: 'green', children: ['●'] }), Text({ dimColor: true, children: [` Кеш теплий ще ${minutes(st.left)}`] })] }))
+    else if (st.kind === 'cooling') parts.push(Text({ color: 'yellow', bold: true, children: [`◐ Кеш охолоне за ${minutes(st.left)}`] }))
+    else if (st.kind === 'cold') parts.push(Text(big ? { color: 'red', bold: true, children: [`○ Кеш охолов ${minutes(-st.left)} тому`] } : { dimColor: true, children: [`○ Кеш охолов ${minutes(-st.left)} тому`] }))
     const rewrite = usd(rewriteCost(S.ctx, S.model, ttl))
-    const price = st.kind === 'cold' && big
-      ? Text({ color: 'red', children: [`наступне повідомлення перекешує ≈ ${rewrite}`] })
-      : Text({ dimColor: true, children: [`перекешування коштуватиме ≈ ${rewrite}`] })
-    // The state and its price read as one pair, so a dim bar joins them; the rest is spaced by a gap
-    const state = parts.pop()
-    parts.push(Box({ key: 'state-price', flexDirection: 'row', columnGap: 1, children: [state, Text({ dimColor: true, children: ['│'] }), price] }))
-    if (S.coldRestarts.length) parts.push(Text({ dimColor: true, children: [`перекешовано ${restarts()}`] }))
+    parts.push(st.kind === 'cold' && big
+      ? Text({ color: 'red', children: [`Наступне повідомлення перекешує ≈ ${rewrite}`] })
+      : Text({ dimColor: true, children: [`Перекешування коштуватиме ≈ ${rewrite}`] }))
+    if (S.coldRestarts.length) parts.push(Text({ dimColor: true, children: [`Перекешовано ${restarts()}`] }))
     // Plan limits only when one is close to running out
     const high = S.rateLimits.filter((l) => (l.percentUsed || 0) >= 80)
-    if (high.length) parts.push(Text(limitTone(high, { children: ['ліміти: ' + limitsText(high)] })))
-    // A gap, not a separator glyph, between the other parts
-    const row = [Box({ key: 'parts', flexDirection: 'row', columnGap: 3, children: parts })]
+    if (high.length) parts.push(Text(limitTone(high, { children: ['Ліміти: ' + limitsText(high)] })))
     // Keep warm is on offer whenever there is a warm cache to keep: quiet while there is time,
-    // loud once a big cache is about to cool
+    // loud once a big cache is about to cool. A real button like Handoff's; the letter only on the
+    // terminal, since a desktop draws a hotkey as a chip in front of the label
+    const key = e.surface === 'terminal' ? { hotkey: 'k' } : {}
     if (st.kind === 'warm' || st.kind === 'cooling') {
       const isUrgent = st.kind === 'cooling' && big
-      row.push(Button({ key: 'keepwarm', label: 'Тримати теплим', hotkey: 'k', plain: true, ...(isUrgent ? {} : { dimColor: true }), onPress: async () => { now = await $.clock.now(); startKeepWarm($, settings.keepWarmHours); await publish($); $.ui.invalidate('ui.render') } }))
+      parts.push(Button({ key: 'keepwarm', label: 'Тримати теплим', ...key, ...(isUrgent ? {} : { dimColor: true }), onPress: async () => { now = await $.clock.now(); startKeepWarm($, settings.keepWarmHours); await publish($); $.ui.invalidate('ui.render') } }))
     } else if (st.kind === 'kept') {
-      row.push(Button({ key: 'keepwarm', label: 'Не тримати', hotkey: 'k', plain: true, onPress: async () => { now = await $.clock.now(); stopKeepWarm($, 'вимкнено'); await publish($); $.ui.invalidate('ui.render') } }))
+      parts.push(Button({ key: 'keepwarm', label: 'Не тримати', ...key, onPress: async () => { now = await $.clock.now(); stopKeepWarm($, 'вимкнено'); await publish($); $.ui.invalidate('ui.render') } }))
     }
-    const mine = Box({ key: 'cache-meter', flexDirection: 'row', columnGap: 3, children: row })
+    // Every part, the button too, is set off from the next by the same dim bar
+    const row = parts.flatMap((p, i) => i ? [Text({ key: `bar${i}`, dimColor: true, children: ['│'] }), p] : [p])
+    const mine = Box({ key: 'cache-meter', flexDirection: 'row', columnGap: 1, children: row })
     return Box({ flexDirection: 'column', children: below ? [mine, below] : [mine] })
   })
 
