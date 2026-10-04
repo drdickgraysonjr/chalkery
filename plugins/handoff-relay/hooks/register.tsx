@@ -104,9 +104,9 @@ export const register: Register = on => {
     // Суму показує рядок cache-meter; тут лише що вона означає для хендофу.
     const coldHint =
       cache?.isBig && cache.kind === 'cooling'
-        ? ' кеш скоро охолоне: передавати зараз дешевше'
+        ? ' Кеш скоро охолоне: передавати зараз дешевше'
         : cache?.kind === 'cold' && cache.isBig
-          ? ' кеш охолов: хендоф коштуватиме як звичайне повідомлення'
+          ? ' Кеш охолов: хендоф коштуватиме як звичайне повідомлення'
           : null
     const isHeavy = (used !== null && used >= THRESHOLD) || coldHint !== null
 
@@ -162,7 +162,7 @@ export const register: Register = on => {
         }
       }
 
-      const hint = coldHint ?? (isHeavy ? ` контекст ${Math.round((used ?? 0) / 1000)}k, час передавати` : null)
+      const hint = coldHint ?? (isHeavy ? ` Контекст ${Math.round((used ?? 0) / 1000)}k, час передавати` : null)
 
       mine = (
         <Box key="handoff-row">

@@ -118,7 +118,7 @@ for (const surface of SURFACES) {
 
       const button = await ui.find({ key: 'handoff' })
       expect(button?.props.variant).toBe('primary')
-      expect((await ui.find({ text: /час передавати/ }))?.text).toContain('180k')
+      expect(await ui.find({ text: /^ Контекст 180k, час передавати$/ })).toBeDefined()
     })
 
     test('натискання запускає /handoff і ховає кнопку до кінця ходу', async ($, on) => {
@@ -265,7 +265,7 @@ for (const surface of SURFACES) {
       const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
 
       expect((await ui.find({ key: 'handoff' }))?.props.variant).toBe('primary')
-      expect(await ui.find({ text: /^ кеш скоро охолоне: передавати зараз дешевше$/ })).toBeDefined()
+      expect(await ui.find({ text: /^ Кеш скоро охолоне: передавати зараз дешевше$/ })).toBeDefined()
       // Суму показує рядок cache-meter, тут вона була б третім повтором
       expect(await ui.find({ text: /\$/ })).toBeUndefined()
     })
@@ -276,7 +276,7 @@ for (const surface of SURFACES) {
       const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
 
       expect((await ui.find({ key: 'handoff' }))?.props.variant).toBe('primary')
-      expect(await ui.find({ text: /^ кеш охолов: хендоф коштуватиме як звичайне повідомлення$/ })).toBeDefined()
+      expect(await ui.find({ text: /^ Кеш охолов: хендоф коштуватиме як звичайне повідомлення$/ })).toBeDefined()
       expect(await ui.find({ text: /\$/ })).toBeUndefined()
       expect(await ui.find({ text: /дешевше/ })).toBeUndefined()
     })
