@@ -10,6 +10,9 @@ const THRESHOLD = 180_000
 // 'run' запускає /handoff одразу; 'fill' лише вставляє його в поле вводу, а Enter натискає людина.
 const MODE = 'run' as 'run' | 'fill'
 
+// Картка сама сесію не запускає: людина тисне кнопку на ній.
+const LAUNCH_HINT = 'Запускай через Start locally або іншу кнопку на картці.'
+
 const tokens = atom({ plugin: 'handoff-relay', key: 'tokens' } as const, null as Tokens)
 const isPending = atom({ plugin: 'handoff-relay', key: 'isPending' } as const, false)
 const isHandoffTurn = atom({ plugin: 'handoff-relay', key: 'isHandoffTurn' } as const, false)
@@ -78,9 +81,21 @@ export const register: Register = on => {
     const isHeavy = used !== null && used >= THRESHOLD
 
     if (done !== null) {
+      // Одним рядком, якщо влазить; інакше підказка йде другим рядком, а не рветься посеред слова.
+      const head = `Handoff створено: ${done}.`
+      const isOneLine = head.length + 1 + LAUNCH_HINT.length <= e.props.bodyColumns
+
       return (
-        <Box>
-          <Text dimColor>Handoff зроблено: {done}</Text>
+        <Box key="handed-off" flexDirection={isOneLine ? 'row' : 'column'}>
+          <Text>
+            <Text dimColor>Handoff створено: </Text>
+            <Text bold>{done}</Text>
+            <Text dimColor>.</Text>
+          </Text>
+          <Text dimColor wrap="wrap">
+            {isOneLine ? ' ' : ''}
+            {LAUNCH_HINT}
+          </Text>
         </Box>
       )
     }

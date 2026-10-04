@@ -83,7 +83,10 @@ for (const surface of SURFACES) {
       await $.turn.complete(turnEnd)
 
       expect(await ui.find({ key: 'handoff' })).toBeUndefined()
-      expect((await ui.find({ text: /Handoff зроблено/ }))?.text).toContain(TITLE)
+      const line = await ui.find({ key: 'handed-off' })
+      expect(line?.text).toContain(`Handoff створено: ${TITLE}.`)
+      expect(line?.text).toContain('Start locally')
+      expect(line?.props.flexDirection).toBe('row')
     })
 
     test('/handoff, набраний вручну, теж передає фазу', async ($, on) => {
@@ -99,7 +102,7 @@ for (const surface of SURFACES) {
       await $.turn.complete(turnEnd)
 
       expect(await ui.find({ key: 'handoff' })).toBeUndefined()
-      expect(await ui.find({ text: /Handoff зроблено/ })).toBeDefined()
+      expect(await ui.find({ text: /Handoff створено/ })).toBeDefined()
     })
 
     test('картка поза хендофом кнопку не прибирає', async ($, on) => {
@@ -135,7 +138,23 @@ for (const surface of SURFACES) {
       await $.turn.complete(turnEnd)
 
       expect(await ui.find({ key: 'handoff' })).toBeDefined()
-      expect(await ui.find({ text: /Handoff зроблено/ })).toBeUndefined()
+      expect(await ui.find({ text: /Handoff створено/ })).toBeUndefined()
+    })
+    test('вузька смуга: підказка про запуск іде другим рядком', async ($, on) => {
+      on('command.run', () => ({ text: '' }))
+      on('tool.call', { tool: SPAWN }, () => ({ result: 'created' }))
+      on('turn.complete', () => ({ text: '' }))
+      const ui = await $.ui.mount({
+        plugin: 'handoff-relay', surface, component: 'AbovePrompt', props: { ...props, bodyColumns: 60 },
+      })
+
+      await ui.press({ key: 'handoff' })
+      await $.tool.call({ tool: SPAWN, title: TITLE, prompt: 'p', tldr: 't' })
+      await $.turn.complete(turnEnd)
+
+      const line = await ui.find({ key: 'handed-off' })
+      expect(line?.props.flexDirection).toBe('column')
+      expect(line?.text).toContain('Start locally')
     })
   })
 }
