@@ -41,7 +41,7 @@ const turnEnd = { answer: LONG, durationMs: 1, isAborted: false, turnId: 't1', r
 
 const REPLY = JSON.stringify([
   { label: 'Опублікуй сторінку', prompt: 'Опублікуй сторінку зараз' },
-  { label: 'Хендоф', prompt: '/handoff' },
+  { label: 'хендоф', prompt: '/handoff' },
   { label: 'Вигаданий скіл', prompt: '/nope зроби щось' },
 ])
 
@@ -129,7 +129,6 @@ for (const surface of SURFACES) {
       expect((await ui.find({ key: 's0' }))?.props.label).toBe('Опублікуй сторінку')
       expect((await ui.find({ key: 's1' }))?.props.label).toBe('Хендоф')
       expect(await ui.find({ key: 's2' })).toBeUndefined()
-      expect(await ui.find({ key: 'ask' })).toBeUndefined()
       expect(w.suggested).toEqual(['Опублікуй сторінку зараз'])
     })
 
@@ -152,6 +151,19 @@ for (const surface of SURFACES) {
 
       await ui.press({ key: 'ask' })
       await ui.press({ key: 'dismiss' })
+      expect(await ui.find({ key: 's0' })).toBeUndefined()
+      expect(await ui.find({ key: 'ask' })).toBeDefined()
+      expect(w.forks.length).toBe(1)
+    })
+
+    test('повторне натискання «Що далі?» згортає список без нового fork', async ($, on) => {
+      const w = engine(on)
+      await $.turn.complete(turnEnd)
+      const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
+
+      await ui.press({ key: 'ask' })
+      expect(await ui.find({ key: 's0' })).toBeDefined()
+      await ui.press({ key: 'ask' })
       expect(await ui.find({ key: 's0' })).toBeUndefined()
       expect(await ui.find({ key: 'ask' })).toBeDefined()
       expect(w.forks.length).toBe(1)
@@ -224,8 +236,10 @@ for (const surface of SURFACES) {
       const offer = await ui.find({ key: 'next-steps-offer' })
       expect(offer?.props.flexDirection).toBe('row')
       expect(offer?.props.columnGap).toBe(3)
-      expect(offer?.text).toContain('Що далі:')
-      expect(offer?.text).toContain('сховати')
+      expect(offer?.text).toContain('Що далі?')
+      expect(offer?.text).toContain('Сховати')
+      // Заголовок — та сама кнопка, не підпис
+      expect((await ui.find({ key: 'ask' }))?.props.label).toBe('Що далі?')
       expect(await ui.find({ key: 'next-steps-head' })).toBeUndefined()
     })
 
@@ -239,8 +253,8 @@ for (const surface of SURFACES) {
       await ui.press({ key: 'ask' })
       expect((await ui.find({ key: 'next-steps-offer' }))?.props.flexDirection).toBe('column')
       const head = await ui.find({ key: 'next-steps-head' })
-      expect(head?.text).toContain('Що далі:')
-      expect(head?.text).toContain('сховати')
+      expect(head?.text).toContain('Що далі?')
+      expect(head?.text).toContain('Сховати')
       expect((await ui.find({ key: 's0' }))?.props.label).toBe('Опублікуй сторінку')
     })
   })

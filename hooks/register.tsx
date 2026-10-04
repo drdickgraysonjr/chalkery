@@ -129,7 +129,7 @@ function parseSuggestions(reply: string, known: ReadonlySet<string> | null): Sug
     const filled = clean(prompt, PROMPT_MAX)
     if (filled === '' || !namesKnownCommand(filled, known)) continue
     const named = typeof label === 'string' ? clean(label, LABEL_MAX) : ''
-    items.push({ label: named === '' ? clean(filled, LABEL_MAX) : named, prompt: filled })
+    items.push({ label: capitalize(named === '' ? clean(filled, LABEL_MAX) : named), prompt: filled })
     if (items.length === MAX_SUGGESTIONS) break
   }
   return items
@@ -169,8 +169,14 @@ const BUTTON_CHROME = 5
 
 function fitsOneRow(items: readonly Suggestion[], columns: number): boolean {
   const labels = items.reduce((sum, item) => sum + [...item.label].length + BUTTON_CHROME, 0)
-  const width = 'Що далі:'.length + labels + 'сховати'.length + BUTTON_CHROME + GAP * (items.length + 1)
+  const width = 'Що далі?'.length + BUTTON_CHROME + labels + 'Сховати'.length + BUTTON_CHROME + GAP * (items.length + 1)
   return width <= columns
+}
+
+// Підписи кнопок з великої літери, як Handoff і «Сховати»; статус після кнопок — з малої.
+function capitalize(text: string): string {
+  const [first = '', ...rest] = [...text]
+  return first.toLocaleUpperCase('uk') + rest.join('')
 }
 
 // Як usd() у cache-meter, щоб одна сума в смузі читалась однаково.
@@ -271,20 +277,22 @@ export const register: Register = (on, options) => {
           }}
         />
       ))
+      // Та сама кнопка, що й згорнута: натискання згортає список, як і 0.
+      const toggle = <Button key="ask" label="Що далі?" dimColor onPress={() => update($, view, () => READY)} />
       const dismiss = (
-        <Button key="dismiss" hotkey="0" plain label="сховати" onPress={() => update($, view, () => READY)} />
+        <Button key="dismiss" hotkey="0" plain label="Сховати" onPress={() => update($, view, () => READY)} />
       )
       // Влазить в один рядок — один рядок; ні — заголовок із «сховати», під ним пункти.
       mine = fitsOneRow(current.items, e.props.bodyColumns) ? (
         <Box key="next-steps-offer" flexDirection="row" columnGap={GAP}>
-          <Text dimColor>Що далі:</Text>
+          {toggle}
           {items}
           {dismiss}
         </Box>
       ) : (
         <Box key="next-steps-offer" flexDirection="column">
           <Box key="next-steps-head" flexDirection="row" columnGap={GAP}>
-            <Text dimColor>Що далі:</Text>
+            {toggle}
             {dismiss}
           </Box>
           {items}
