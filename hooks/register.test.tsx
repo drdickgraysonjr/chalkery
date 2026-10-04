@@ -198,6 +198,8 @@ for (const surface of SURFACES) {
 
       expect(await ui.find({ key: 'handoff' })).toBeDefined()
       expect(await ui.find({ text: /^engine row$/ })).toBeDefined()
+      // Рядки смуги розсунуто на пів рядка, не на цілий порожній
+      expect((await ui.find({ key: 'handoff-stack' }))?.props.rowGap).toBe(0.5)
     })
 
     test('cache-meter: великий кеш скоро охолоне — кнопка primary, підказка без суми', { plugins: [fakeCacheMeter] }, async ($, on) => {

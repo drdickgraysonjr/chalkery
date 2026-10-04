@@ -177,8 +177,9 @@ export const register: Register = on => {
       )
     }
 
+    // Пів рядка між своїм рядком і смугами модів під ним: цілий рядок виглядає як порожній абзац.
     return (
-      <Box flexDirection="column">
+      <Box key="handoff-stack" flexDirection="column" rowGap={0.5}>
         {mine}
         {below}
       </Box>
