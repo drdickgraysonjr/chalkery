@@ -1,0 +1,27 @@
+{
+  "name": "next-steps",
+  "version": "1.1.0",
+  "description": "Кнопка «Що далі?» над полем вводу: за натисканням пропонує до трьох наступних промптів. 1, 2 або 3 кладе промпт у поле як чернетку, 0 ховає. Форк next-steps Thariq Shihipar, де пропозиції йшли після кожного ходу.",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Yehor Hunia"
+  },
+  "license": "MIT",
+  "keywords": ["suggestions", "next-steps", "prompt", "function-hooks", "ui"],
+  "userConfig": {
+    "minAnswerChars": {
+      "type": "number",
+      "title": "Найкоротша відповідь, після якої є кнопка",
+      "description": "Після відповідей, коротших за стільки символів, кнопки «Що далі?» немає.",
+      "required": false,
+      "default": 80
+    },
+    "suggestSkills": {
+      "type": "boolean",
+      "title": "Пропонувати скіли й слеш-команди",
+      "description": "Передавати підбирачу список скілів і слеш-команд сесії, щоб пропозиція могла бути одним із них.",
+      "required": false,
+      "default": true
+    }
+  }
+}
