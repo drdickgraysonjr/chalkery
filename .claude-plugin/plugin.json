@@ -1,24 +1,25 @@
 {
   "name": "next-steps",
-  "version": "1.0.0",
-  "description": "After each turn, suggests up to three next prompts above the input. Press 1, 2 or 3 to put one in the prompt box as a draft you can edit, 0 to dismiss.",
+  "version": "1.1.0",
+  "description": "Кнопка «Що далі?» над полем вводу: за натисканням пропонує до трьох наступних промптів. 1, 2 або 3 кладе промпт у поле як чернетку, 0 ховає. Форк next-steps Thariq Shihipar, де пропозиції йшли після кожного ходу.",
+  "types": "./types/index.d.ts",
   "author": {
-    "name": "Thariq Shihipar"
+    "name": "Yehor Hunia"
   },
   "license": "MIT",
   "keywords": ["suggestions", "next-steps", "prompt", "function-hooks", "ui"],
   "userConfig": {
     "minAnswerChars": {
       "type": "number",
-      "title": "Shortest answer to suggest after",
-      "description": "Skip suggestions after answers shorter than this many characters.",
+      "title": "Найкоротша відповідь, після якої є кнопка",
+      "description": "Після відповідей, коротших за стільки символів, кнопки «Що далі?» немає.",
       "required": false,
       "default": 80
     },
     "suggestSkills": {
       "type": "boolean",
-      "title": "Suggest skills and slash commands",
-      "description": "Tell the suggester which skills and slash commands this session has, so a suggestion can be one of them.",
+      "title": "Пропонувати скіли й слеш-команди",
+      "description": "Передавати підбирачу список скілів і слеш-команд сесії, щоб пропозиція могла бути одним із них.",
       "required": false,
       "default": true
     }

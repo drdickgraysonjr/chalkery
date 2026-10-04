@@ -1,24 +1,19 @@
 /* @jsxRuntime classic */
 /* @jsx h */
 /* @jsxFrag Fragment */
-// next-steps: when a turn ends, fork the session (shares the prompt cache, so
-// it has full context for the price of one short reply) and ask for up to
-// three likely next prompts. Draw them as 1/2/3 buttons in the band above the
-// composer; a press writes that prompt into the real composer as the person's
-// draft ($.prompt.fill) for them to edit and Enter; 0 dismisses. The top
-// suggestion is also offered as the composer's dim Tab-to-take ghost text
-// ($.prompt.suggest). Nothing is submitted by the plugin, so no origin framing.
-// The fork is also handed the session's skills and slash commands
-// ($.command.list), so a suggestion can be "/skill arguments".
+// next-steps на вимогу: після відповіді над полем вводу лише кнопка «Що далі?».
+// Натиснув — мод робить fork сесії (спільний з нею кеш промпту, тож це ціна однієї
+// короткої відповіді) і просить до трьох імовірних наступних промптів. Вони стають
+// кнопками 1/2/3; натискання кладе промпт у поле вводу як чернетку ($.prompt.fill),
+// Enter тисне людина; 0 ховає. Перша пропозиція ще й сірим текстом у полі, Tab бере
+// ($.prompt.suggest). Мод нічого не відправляє сам. Fork отримує скіли й слеш-команди
+// сесії ($.command.list), тож пропозиція може бути «/скіл аргументи».
+// Форк anthropics/claude-plugins-community/next-steps@87c843d: там fork ішов після кожного ходу.
 
-import type { CommandInfo, EngineInterface, Register, RenderElement } from 'claude-code'
+import { atom, read, update } from 'claude-code'
+import type { CommandInfo, Hook, Register, RenderElement } from 'claude-code'
 
-type Suggestion = { label: string; prompt: string }
-
-type View =
-  | { kind: 'hidden' }
-  | { kind: 'loading'; turnId: string }
-  | { kind: 'offer'; items: Suggestion[] }
+import type { CacheMeterView, Suggestion, View } from '../types'
 
 const MAX_SUGGESTIONS = 3
 const LABEL_MAX = 48
@@ -92,7 +87,8 @@ function forkPrompt(skills: string): string {
     `as up to ${MAX_SUGGESTIONS} concrete prompts written in the user's voice (imperative, specific to ` +
     'this conversation: name the file, test, PR, or follow-up they would actually type). Prefer the ' +
     'obvious next action (run the tests, commit, fix the thing you flagged, do the same for X) over generic ' +
-    'ones. If the conversation is clearly finished or nothing useful comes to mind, return an empty list.\n\n' +
+    'ones. Write each label and prompt in the language the user writes in. If the conversation is clearly ' +
+    'finished or nothing useful comes to mind, return an empty list.\n\n' +
     (skills === ''
       ? ''
       : 'The user runs a skill or slash command by starting a prompt with its name. When one of them is ' +
@@ -139,91 +135,141 @@ function parseSuggestions(reply: string, known: ReadonlySet<string> | null): Sug
   return items
 }
 
-// Session-local view state; a hot reload resets it, which is fine.
-let view: View = { kind: 'hidden' }
 
-function show($: EngineInterface, nextView: View): void {
-  view = nextView
-  $.ui.invalidate('ui.render')
+// Стан мода cache-meter, якщо його встановлено. Без нього мод працює: значення просто немає.
+const cacheMeter = { plugin: 'cache-meter', key: 'cache' } as const
+type Engine = Parameters<Hook<'ui.render'>>[0]
+// Чужий ключ не типізований у нашому контракті, тому приводимо сигнатуру на місці виклику.
+type GetCacheMeter = (ref: typeof cacheMeter) => Promise<{ value?: CacheMeterView }>
+const readCacheMeter = async ($: Engine): Promise<CacheMeterView | null> => {
+  try {
+    return (await ($.state.get as unknown as GetCacheMeter)(cacheMeter)).value ?? null
+  } catch {
+    return null
+  }
+}
+
+// У $.state, а не в змінній модуля: гаряче перезавантаження мода її обнулило б.
+const view = atom({ plugin: 'next-steps', key: 'view' } as const, { kind: 'hidden' } as View)
+
+const HIDDEN: View = { kind: 'hidden' }
+const READY: View = { kind: 'ready' }
+
+const NO_REPLY: Record<string, string> = {
+  'nothing-to-fork': 'ще немає розмови, з якої підбирати',
+  'api-error': 'API відповів помилкою',
+  'empty-reply': 'модель відповіла порожньо',
+  aborted: 'запит перервано',
+}
+
+// Натиснуто «Що далі?»: питаємо fork і показуємо, що він запропонував.
+async function ask($: Engine, suggestsSkills: boolean): Promise<void> {
+  if ((await read($, view)).kind !== 'ready') return
+  const id = await $.clock.now()
+  const loading: View = { kind: 'loading', id }
+  await update($, view, () => loading)
+  let items: Suggestion[] = []
+  let failure: string | null = null
+  try {
+    // Без списку fork усе одно підбирає; слеш-промпти тоді не перевіряються.
+    const commands = await $.command.list().catch(() => null)
+    const known = commands === null ? null : new Set(commands.map(command => command.name))
+    const skills = suggestsSkills && commands !== null ? skillList(commands) : ''
+    const reply = await $.model.fork({ prompt: forkPrompt(skills) })
+    if (reply.isAnswered) items = parseSuggestions(reply.text, known)
+    else failure = NO_REPLY[reply.reason] ?? reply.reason
+  } catch (error) {
+    failure = String(error)
+    $.ui.log(`fork failed: ${failure}`)
+  }
+  // Поки чекали, почався новий хід або людина сховала смугу: відповідь уже не до речі.
+  const now = await read($, view)
+  if (now.kind !== 'loading' || now.id !== id) return
+  if (items.length === 0) {
+    $.ui.toast(failure === null ? 'Що далі: модель не має що запропонувати' : `Що далі: ${failure}`)
+    await update($, view, () => READY)
+    return
+  }
+  const offer: View = { kind: 'offer', items }
+  await update($, view, () => offer)
+  void $.prompt.suggest({ text: items[0]?.prompt ?? '' }).catch(() => undefined)
 }
 
 export const register: Register = (on, options) => {
   const minTurnChars = typeof options?.minAnswerChars === 'number' ? options.minAnswerChars : 80
   const suggestsSkills = options?.suggestSkills !== false
 
-  // A new turn (typed or otherwise) hides whatever was offered.
+  // Новий хід (набраний чи будь-який інший) ховає все, що було запропоновано.
   on('turn.start', async ($, e, next) => {
-    if (view.kind !== 'hidden') show($, { kind: 'hidden' })
+    await update($, view, () => HIDDEN)
     return next(e)
   })
 
-  // Turn over: ask the fork, detached, so the turn's completion never waits on it.
+  // Хід завершився відповіддю: лише кнопка, модель ще не питали. Ходи субагентів не рахуємо.
   on('turn.complete', async ($, e, next) => {
     const result = await next(e)
-    if (e.reason !== 'answer' || e.answer.trim().length < minTurnChars) return result
-    const turnId = e.turnId
-    show($, { kind: 'loading', turnId })
-    void (async () => {
-      let items: Suggestion[] = []
-      try {
-        // Without the list the fork still suggests; slash prompts go unchecked.
-        const commands = await $.command.list().catch(() => null)
-        const known = commands === null ? null : new Set(commands.map(command => command.name))
-        const skills = suggestsSkills && commands !== null ? skillList(commands) : ''
-        const reply = await $.model.fork({ prompt: forkPrompt(skills) })
-        items = reply.isAnswered ? parseSuggestions(reply.text, known) : []
-      } catch (error) {
-        $.ui.log(`fork failed: ${String(error)}`)
-      }
-      // A newer turn started (or another completed) while we waited: drop ours.
-      if (view.kind !== 'loading' || view.turnId !== turnId) return
-      show($, items.length === 0 ? { kind: 'hidden' } : { kind: 'offer', items })
-      if (items[0] !== undefined) void $.prompt.suggest({ text: items[0].prompt }).catch(() => undefined)
-    })()
+    if (e.agentId !== undefined) return result
+    const isWorthAsking = e.reason === 'answer' && e.answer.trim().length >= minTurnChars
+    await update($, view, () => (isWorthAsking ? READY : HIDDEN))
     return result
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next): Promise<RenderElement> => {
     const below = await next(e)
-    if (e.props.hasSurvey || e.props.isWorking || view.kind === 'hidden') return below
+    const current = await read($, view)
+    if (e.props.hasSurvey || e.props.isWorking || current.kind === 'hidden') return below
     const { Box, Text, Button } = $.ui.resolve(e)
 
-    if (view.kind === 'loading') {
-      return (
-        <Box flexDirection="column">
-          {below}
-          <Box marginTop={1}>
-            <Text dimColor>next steps…</Text>
+    let mine: RenderElement
+    if (current.kind === 'ready') {
+      // Після паузи кеш міг охолонути: тоді fork перепише контекст, і це варто знати до натискання.
+      const cache = await readCacheMeter($)
+      const coldHint =
+        cache?.kind === 'cold' && cache.isBig
+          ? ` кеш охолов: підбір перезапише контекст ≈ $${cache.rewriteUsd.toFixed(2)}`
+          : null
+      mine = (
+        <Box key="next-steps-ask">
+          <Button key="ask" label="Що далі?" dimColor onPress={() => ask($, suggestsSkills)} />
+          {coldHint !== null ? <Text dimColor>{coldHint}</Text> : null}
+        </Box>
+      )
+    } else if (current.kind === 'loading') {
+      mine = (
+        <Box key="next-steps-loading">
+          <Text dimColor>Що далі: підбираю…</Text>
+        </Box>
+      )
+    } else {
+      mine = (
+        <Box key="next-steps-offer" flexDirection="column">
+          <Text dimColor>Що далі:</Text>
+          {current.items.map((item, index) => (
+            <Box key={`row${index}`} marginLeft={2}>
+              <Button
+                key={`s${index}`}
+                hotkey={String(index + 1)}
+                plain
+                label={item.label}
+                onPress={async () => {
+                  await update($, view, () => HIDDEN)
+                  const r = await $.prompt.fill({ text: item.prompt }).catch(() => null)
+                  if (r === null || !r.isFilled) $.ui.toast('Не вдалося вставити промпт у поле вводу')
+                }}
+              />
+            </Box>
+          ))}
+          <Box marginLeft={2}>
+            <Button key="dismiss" hotkey="0" plain label="сховати" onPress={() => update($, view, () => READY)} />
           </Box>
         </Box>
       )
     }
 
-    const items = view.items
     return (
       <Box flexDirection="column">
         {below}
-        <Box marginTop={1} />
-        <Text dimColor>next:</Text>
-        {items.map((item, index) => (
-          <Box key={`s${index}`} marginLeft={2}>
-            <Button
-              hotkey={String(index + 1)}
-              plain
-              label={item.label}
-              onPress={() => {
-                show($, { kind: 'hidden' })
-                void $.prompt.fill({ text: item.prompt }).then(
-                  r => r.isFilled || $.ui.toast('could not fill the prompt box'),
-                  error => $.ui.toast(`could not fill: ${String(error)}`),
-                )
-              }}
-            />
-          </Box>
-        ))}
-        <Box marginLeft={2}>
-          <Button hotkey="0" plain label="dismiss" onPress={() => show($, { kind: 'hidden' })} />
-        </Box>
+        {mine}
       </Box>
     )
   })

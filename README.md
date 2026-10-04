@@ -1,34 +1,44 @@
-# next-steps
+# next-steps (на вимогу)
 
-After each turn, suggests up to three next prompts above the input box.
+Форк [next-steps](https://github.com/anthropics/claude-plugins-community/tree/main/next-steps) з `anthropics/claude-plugins-community@87c843d` (автор Thariq Shihipar). Там пропозиції наступних промптів з'являлися після кожного ходу, і кожен хід коштував один додатковий запит до моделі. Тут над полем вводу лише кнопка «Що далі?», а модель питаємо, коли її натиснули.
 
 ```
-next:
-  1: run the tests you just wrote
-  2: do the same for the settings page
-  3: /code-review high
-  0: dismiss
+[ Що далі? ]
 ```
 
-Press `1`, `2` or `3` from an empty prompt box (or click one) and that prompt is written into the box as a draft. Edit it, then press Enter yourself. `0` dismisses. The top suggestion also shows as the box's dim ghost text, so Tab takes it.
+після натискання:
 
-The plugin never submits a prompt on its own.
+```
+Що далі:
+  1: Опублікуй сторінку
+  2: Хендоф
+  0: сховати
+```
 
-## How it works
+1, 2 або 3 з порожнього поля (або клік) кладе промпт у поле як чернетку: її можна підправити, Enter тисне людина. 0 ховає пропозиції й повертає кнопку. Перша пропозиція ще й сірим текстом у полі, Tab бере. Мод нічого не відправляє сам. Цифри перехоплюються лише тоді, коли пропозиції на екрані.
 
-It is a function-hooks plugin (`hooks/register.tsx`):
+## Як працює
 
-- `turn.complete`: forks the session with `$.model.fork` to ask for likely next prompts. The fork shares the session's prompt cache, so it costs about one short reply.
-- `$.command.list`: the session's skills and slash commands (plugin, user and MCP ones with their descriptions) go into the fork's question, so a suggestion can be `/skill arguments`. A suggestion that names a command the session does not have is dropped.
-- `ui.render` on `AbovePrompt`: draws the suggestions as buttons.
-- A press calls `$.prompt.fill`; the top suggestion goes to `$.prompt.suggest`.
-- `turn.start`: hides the suggestions.
+`hooks/register.tsx`, function hooks:
 
-Suggestions draw in the terminal. Other surfaces show nothing.
+- `turn.complete`: після відповіді основного ходу (не субагента), довшої за `minAnswerChars`, з'являється кнопка. Модель не питаємо.
+- Натискання кнопки: `$.model.fork` з тим самим контекстом, тож префікс читається з кешу промпту. Fork отримує скіли й слеш-команди сесії (`$.command.list`), пропозиція з неіснуючою командою відкидається.
+- Якщо встановлено [cache-meter](../cache-meter) і великий кеш охолов, біля кнопки ціна перезапису контексту.
+- `turn.start` ховає все.
+- Стан смуги лежить у `$.state` (`next-steps.view`), тож гаряче перезавантаження його не губить.
 
-## Options
+Пропозиції — вивід моделі, яка читала недовірений текст, тому перед показом вони чистяться від escape-послідовностей, невидимих і керівних символів (функція `clean` з upstream без змін).
 
-| Option | Default | What it does |
+## Опції
+
+| Опція | За замовчуванням | Що робить |
 | --- | --- | --- |
-| `minAnswerChars` | `80` | Skip suggestions after answers shorter than this |
-| `suggestSkills` | `true` | Tell the suggester which skills and slash commands the session has |
+| `minAnswerChars` | `80` | Після коротших відповідей кнопки немає |
+| `suggestSkills` | `true` | Передавати підбирачу скіли й слеш-команди сесії |
+
+## Перевірка
+
+```
+claude plugin validate .
+claude plugin test .
+```
