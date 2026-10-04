@@ -1,42 +1,32 @@
-# next-steps (на вимогу)
+# next-steps (on demand)
 
-Форк [next-steps](https://github.com/anthropics/claude-plugins-community/tree/main/next-steps) з `anthropics/claude-plugins-community@87c843d` (автор Thariq Shihipar). Там пропозиції наступних промптів з'являлися після кожного ходу, і кожен хід коштував один додатковий запит до моделі. Тут над полем вводу лише кнопка «Що далі?», а модель питаємо, коли її натиснули.
+English | [Українська](README.uk.md)
 
-```
-[ Що далі? ]
-```
+A fork of [next-steps](https://github.com/anthropics/claude-plugins-community/tree/main/next-steps) from `anthropics/claude-plugins-community@87c843d` (by Thariq Shihipar). Upstream suggested the next prompts after every turn, and each turn cost one extra model request. Here the band above the prompt shows only a What next? button, and the model is asked when you press it.
 
-після натискання:
+Pressing 1, 2 or 3 in an empty input box (or clicking) puts a prompt into the box as a draft: edit it if you like, you press Enter. 0 hides the suggestions and brings the button back. The first suggestion also appears as grey text in the box, and Tab takes it. The mod never sends anything itself, and it takes the digits only while suggestions are on screen.
 
-```
-Що далі:
-  1: Опублікуй сторінку
-  2: Хендоф
-  0: сховати
-```
-
-1, 2 або 3 з порожнього поля (або клік) кладе промпт у поле як чернетку: її можна підправити, Enter тисне людина. 0 ховає пропозиції й повертає кнопку. Перша пропозиція ще й сірим текстом у полі, Tab бере. Мод нічого не відправляє сам. Цифри перехоплюються лише тоді, коли пропозиції на екрані.
-
-## Як працює
+## How it works
 
 `hooks/register.tsx`, function hooks:
 
-- `turn.complete`: після відповіді основного ходу (не субагента), довшої за `minAnswerChars`, з'являється кнопка. Модель не питаємо.
-- Натискання кнопки: `$.model.fork` з тим самим контекстом, тож префікс читається з кешу промпту. Fork отримує скіли й слеш-команди сесії (`$.command.list`), пропозиція з неіснуючою командою відкидається.
-- Якщо встановлено [cache-meter](../cache-meter) і великий кеш охолов, біля кнопки ціна перезапису контексту.
-- `turn.start` ховає все.
-- Стан смуги лежить у `$.state` (`next-steps.view`), тож гаряче перезавантаження його не губить.
+- `turn.complete`: after a main-loop answer (not a subagent's) longer than `minAnswerChars`, the button appears. The model is not asked yet.
+- Pressing the button: `$.model.fork` with the same context, so the prefix is read from the prompt cache. The fork gets the session's skills and slash commands (`$.command.list`); a suggestion naming a command that does not exist is dropped.
+- With [cache-meter](../cache-meter) installed and a big cache gone cold, the button shows what re-caching the context would cost.
+- `turn.start` hides everything.
+- The band's state lives in `$.state` (`next-steps.view`), so a hot reload keeps it.
 
-Пропозиції — вивід моделі, яка читала недовірений текст, тому перед показом вони чистяться від escape-послідовностей, невидимих і керівних символів (функція `clean` з upstream без змін).
+Suggestions are output of a model that read untrusted text, so before they are shown they are stripped of escape sequences and invisible and control characters (upstream's `clean`, unchanged).
 
-## Опції
+## Options
 
-| Опція | За замовчуванням | Що робить |
+| Option | Default | What it does |
 | --- | --- | --- |
-| `minAnswerChars` | `80` | Після коротших відповідей кнопки немає |
-| `suggestSkills` | `true` | Передавати підбирачу скіли й слеш-команди сесії |
+| `language` | `auto` | `auto` follows Claude's response language from `/config`; `en` or `uk` set it |
+| `minAnswerChars` | `80` | No button after shorter answers |
+| `suggestSkills` | `true` | Give the suggester the session's skills and slash commands |
 
-## Перевірка
+## Checks
 
 ```
 claude plugin validate .

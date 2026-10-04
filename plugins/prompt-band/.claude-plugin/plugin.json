@@ -1,8 +1,14 @@
 {
   "name": "prompt-band",
   "version": "0.1.0",
-  "description": "Усі три моди однією командою: Handoff, стан кешу і «Що далі?» над полем вводу, однією смугою.",
-  "author": { "name": "Yehor Hunia" },
+  "description": "All three mods in one install: Handoff, cache status and What next? above the prompt, in one band.",
+  "author": {
+    "name": "Yehor Hunia"
+  },
   "license": "MIT",
-  "dependencies": ["handoff-relay", "cache-meter", "next-steps"]
+  "dependencies": [
+    "handoff-relay",
+    "cache-meter",
+    "next-steps"
+  ]
 }

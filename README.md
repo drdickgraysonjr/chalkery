@@ -1,38 +1,40 @@
 # claude-mods
 
-Три моди для Claude Code, які малюють смугу над полем вводу. Працюють у терміналі й у вкладці Code десктопного застосунку.
+English | [Українська](README.uk.md)
 
-| Мод | Що робить |
+Three Claude Code mods that draw a band above the prompt, in the terminal and in the desktop app's Code tab.
+
+| Mod | What it does |
 | --- | --- |
-| `handoff-relay` | Кнопка Handoff запускає `/handoff`. Від 180k токенів контексту вона підсвічується. |
-| `cache-meter` | Показує, скільки ще кеш промпту лишатиметься теплим і скільки коштуватиме перекешування. Кнопкою «Тримати теплим» кеш можна не дати охолонути. Перед відправкою в охололий великий кеш мод питає підтвердження. |
-| `next-steps` | Кнопка «Що далі?» пропонує до трьох наступних промптів. Обраний промпт стає чернеткою в полі вводу, Enter натискаєте ви. |
+| `handoff-relay` | A Handoff button that runs `/handoff`. It lights up from 180k tokens of context. |
+| `cache-meter` | Shows how long the prompt cache stays warm and what a re-cache would cost. Keep warm stops it from going cold. Before you send into a big cold cache, it asks first. |
+| `next-steps` | A What next? button that suggests up to three next prompts. The one you pick becomes a draft in the input box; you press Enter. |
 
-Моди можна ставити окремо або всі разом. У будь-якому поєднанні вони складаються в одну смугу з тим самим порядком рядків: Handoff, кеш, «Що далі?».
+Install them one by one or all at once. In any combination they form one band, always in the same order: Handoff, cache, What next?
 
-## Встановлення
+## Install
 
-Спершу додайте маркетплейс:
+Add the marketplace first:
 
 ```bash
 claude plugin marketplace add drdickgraysonjr/claude-mods
 ```
 
-Усі три моди однією командою:
+All three mods in one command:
 
 ```bash
 claude plugin install prompt-band@claude-mods
 ```
 
-Або лише потрібний:
+Or just the one you need:
 
 ```bash
 claude plugin install cache-meter@claude-mods
 ```
 
-У десктопному застосунку те саме є в меню Plugins → Add plugin: вкладка Marketplaces, потім Add marketplace. Моди починають працювати з наступної сесії.
+In the desktop app the same is under Plugins → Add plugin: the Marketplaces tab, then Add marketplace. The mods start working from the next session.
 
-Коли автор випускає нову версію, спершу оновіть каталог, потім кожен встановлений мод:
+When a new version is out, refresh the catalog, then each installed mod:
 
 ```bash
 claude plugin marketplace update claude-mods
@@ -42,41 +44,54 @@ claude plugin marketplace update claude-mods
 claude plugin update cache-meter@claude-mods
 ```
 
-Видалити пак: `claude plugin uninstall prompt-band@claude-mods`. Три моди, які він поставив, після цього лишаються встановленими. Щоб прибрати і їх, виконайте `claude plugin prune`.
+To remove the pack: `claude plugin uninstall prompt-band@claude-mods`. The three mods it installed stay; `claude plugin prune` removes them too.
 
-## Опції next-steps
+## Language
 
-Після встановлення CLI повідомить, що дві опції не задано. Обидві мають значення за замовчуванням, тому задавати їх не обовʼязково.
+The mods speak English and Ukrainian. Each has a `language` option: `auto` (the default), `en` or `uk`. With `auto`, the mods follow Claude's response language from `/config`, so one setting covers all three; a language the mods do not have, or none, gives English. To set it explicitly, change the option in `/config`, or pass it at install time:
 
-| Опція | За замовчуванням | Що робить |
+```bash
+claude plugin install cache-meter@claude-mods --config language=uk
+```
+
+## next-steps options
+
+After install the CLI says that some options are not set. All of them have defaults, so setting them is optional.
+
+| Option | Default | What it does |
 | --- | --- | --- |
-| `minAnswerChars` | `80` | Після коротших відповідей кнопки немає |
-| `suggestSkills` | `true` | Пропозиція може бути скілом чи слеш-командою сесії |
+| `language` | `auto` | `auto`, `en` or `uk`, as above |
+| `minAnswerChars` | `80` | No button after shorter answers |
+| `suggestSkills` | `true` | A suggestion may be one of the session's skills or slash commands |
 
-## Для авторів
+## For authors
 
 ```
-.claude-plugin/marketplace.json   каталог: пак і три моди
-plugins/<мод>/                    кожен мод самодостатній, ставиться окремо
-plugins/prompt-band/              пак: лише dependencies на три моди
-shared/band.mjs                   договір спільної смуги
-scripts/sync-band.sh              копіює band.mjs у hooks/ кожного мода
+.claude-plugin/marketplace.json   the catalog: the pack and three mods
+plugins/<mod>/                    each mod stands alone and installs on its own
+plugins/<mod>/hooks/locales/      en.mjs and uk.mjs: every word the mod shows a person
+plugins/prompt-band/              the pack: only dependencies on the three mods
+shared/band.mjs                   the shared band contract
+shared/i18n.mjs                   picking the language for the language option
+scripts/sync-shared.sh            copies shared/*.mjs into each mod's hooks/
 ```
 
-**Спільна смуга.** Порядок, у якому рушій складає хуки `ui.render` різних плагінів, не задокументований і залежить від способу встановлення. Тому мод не ставить свій рядок над чи під тим, що повернув `next(e)`. Він вкладає рядок у спільний стовпець `prompt-band` на своє місце: Handoff 10, кеш 20, «Що далі?» 30. Чуже, тобто рядок рушія чи мода не з цього репо, опиняється під ними. Мод ставлять і без сусідів, тому `band.mjs` лежить копією в кожному. Правити слід `shared/band.mjs`, потім запустити `scripts/sync-band.sh`. Перевірка, що копії однакові: `scripts/sync-band.sh --check`.
+**The shared band.** The order in which the engine chains different plugins' `ui.render` hooks is not documented and depends on how they were installed. So a mod does not put its row above or below what `next(e)` returned. It places its row into the shared `prompt-band` column at its own spot: Handoff 10, cache 20, What next? 30. Anything foreign, such as the engine's own row or a mod from elsewhere, goes below them. A mod may be installed without its neighbours, so `band.mjs` and `i18n.mjs` are copied into each one. Edit `shared/`, then run `scripts/sync-shared.sh`; `scripts/sync-shared.sh --check` confirms the copies match.
 
-**Перевірка.** Для кожного мода:
+**Languages.** A mod's code holds no text a person sees: it reads it from `locales/<language>.mjs`. A new language is one more file in each mod, a line in `LOCALES` and a pattern in `shared/i18n.mjs`. Each mod's tests check that every locale has the same keys.
+
+**Checks.** For each mod:
 
 ```bash
 claude plugin validate plugins/cache-meter && claude plugin test plugins/cache-meter
 ```
 
-Тести смуги підставляють сусідні моди окремими плагінами в обох порядках.
+The band tests load the neighbouring mods as separate plugins in both orders. The language tests cover `en`, `auto` without `/config` and `auto` with Ukrainian in `/config`.
 
-**Розробка наживо.** Щоб працювати з робочою копією, а не встановленою версією, додайте теки модів у `CLAUDE_CODE_PLUGIN_DIRS` (розділювач — двокрапка). Плагін із такої теки перекриває встановлений з тією самою назвою.
+**Live development.** To work on your checkout rather than the installed version, add the mod folders to `CLAUDE_CODE_PLUGIN_DIRS` (colon-separated). A plugin loaded from there shadows an installed one of the same name.
 
-**Випуск.** Підніміть `version` у `plugins/<мод>/.claude-plugin/plugin.json`. Без цього `claude plugin update` у колег не побачить змін.
+**Release.** Bump `version` in `plugins/<mod>/.claude-plugin/plugin.json`. Without it, `claude plugin update` will not see the change.
 
-## Ліцензії
+## Licenses
 
-`handoff-relay`, `prompt-band` і спільний код: MIT, Yehor Hunia. `cache-meter` — форк кешової частини cache-keeper з [nateherkai/claude-code-mods](https://github.com/nateherkai/claude-code-mods), MIT, Nate Herk. `next-steps` — форк [anthropics/claude-plugins-community/next-steps](https://github.com/anthropics/claude-plugins-community/tree/main/next-steps), Apache 2.0. Ліцензія кожного мода лежить у його теці.
+`handoff-relay`, `prompt-band` and the shared code: MIT, Yehor Hunia. `cache-meter` is a fork of the cache part of cache-keeper from [nateherkai/claude-code-mods](https://github.com/nateherkai/claude-code-mods), MIT, Nate Herk. `next-steps` is a fork of [anthropics/claude-plugins-community/next-steps](https://github.com/anthropics/claude-plugins-community/tree/main/next-steps), Apache 2.0. Each mod's license is in its folder.

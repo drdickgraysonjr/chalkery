@@ -1,7 +1,7 @@
 {
   "name": "cache-meter",
   "version": "0.2.0",
-  "description": "Стан кешу промпту над полем вводу: теплий чи охолов, контекст, ціна перезапису, ліміти плану, вартість сесії. Тримає великий кеш теплим на прохання (/keepwarm) і питає перед відправкою в охололий кеш. Кешова частина cache-keeper Нейта Герка.",
+  "description": "Prompt cache status above the prompt: how long the cache stays warm, what a re-cache would cost, plan limits near the cap. Keeps a big cache warm on request and asks before a cold send. The cache part of Nate Herk's cache-keeper.",
   "types": "./types/index.d.ts",
   "author": {
     "name": "Yehor Hunia"

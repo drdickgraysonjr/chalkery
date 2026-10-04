@@ -1,27 +1,29 @@
 {
   "name": "claude-mods",
-  "description": "Моди Claude Code над полем вводу: Handoff, стан кешу промпту, «Що далі?». Ставляться окремо або паком і складаються в одну смугу.",
-  "owner": { "name": "Yehor Hunia" },
+  "description": "Claude Code mods above the prompt: Handoff, prompt cache status, What next?. Install them one by one or as a pack; together they form one band. English and Ukrainian.",
+  "owner": {
+    "name": "Yehor Hunia"
+  },
   "plugins": [
     {
       "name": "prompt-band",
       "source": "./plugins/prompt-band",
-      "description": "Пак: усі три моди однією командою."
+      "description": "The pack: all three mods in one install."
     },
     {
       "name": "handoff-relay",
       "source": "./plugins/handoff-relay",
-      "description": "Кнопка Handoff над полем вводу, підсвічується від 180k токенів контексту."
+      "description": "A Handoff button above the prompt, lit from 180k tokens of context."
     },
     {
       "name": "cache-meter",
       "source": "./plugins/cache-meter",
-      "description": "Стан кешу промпту: скільки ще теплий, скільки коштуватиме перекешування, «Тримати теплим»."
+      "description": "Prompt cache status: how long it stays warm, what a re-cache costs, Keep warm."
     },
     {
       "name": "next-steps",
       "source": "./plugins/next-steps",
-      "description": "Кнопка «Що далі?»: за натисканням пропонує до трьох наступних промптів."
+      "description": "A What next? button: up to three next prompts on press."
     }
   ]
 }
