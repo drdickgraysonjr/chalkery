@@ -200,7 +200,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ text: /^engine row$/ })).toBeDefined()
     })
 
-    test('cache-meter: великий кеш скоро охолоне — кнопка primary і ціна перезапису', { plugins: [fakeCacheMeter] }, async ($, on) => {
+    test('cache-meter: великий кеш скоро охолоне — кнопка primary, підказка без суми', { plugins: [fakeCacheMeter] }, async ($, on) => {
       engineRow(on)
       on('session.measure', (_$, e) => ({ changed: e.changed }))
       await $.session.measure(measure(150_000))
@@ -208,7 +208,9 @@ for (const surface of SURFACES) {
       const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
 
       expect((await ui.find({ key: 'handoff' }))?.props.variant).toBe('primary')
-      expect(await ui.find({ text: /^ кеш скоро охолоне, потім перезапис ≈ \$1\.20: передавати зараз дешевше$/ })).toBeDefined()
+      expect(await ui.find({ text: /^ кеш скоро охолоне: передавати зараз дешевше$/ })).toBeDefined()
+      // Суму показує рядок cache-meter, тут вона була б третім повтором
+      expect(await ui.find({ text: /\$/ })).toBeUndefined()
     })
 
     test('cache-meter: великий кеш охолов — кнопка primary, підказка без обіцянки економії', { plugins: [fakeCacheMeter] }, async ($, on) => {
@@ -217,7 +219,8 @@ for (const surface of SURFACES) {
       const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
 
       expect((await ui.find({ key: 'handoff' }))?.props.variant).toBe('primary')
-      expect(await ui.find({ text: /^ кеш охолов: наступне повідомлення перезапише ≈ \$1\.28$/ })).toBeDefined()
+      expect(await ui.find({ text: /^ кеш охолов: хендоф коштуватиме як звичайне повідомлення$/ })).toBeDefined()
+      expect(await ui.find({ text: /\$/ })).toBeUndefined()
       expect(await ui.find({ text: /дешевше/ })).toBeUndefined()
     })
 

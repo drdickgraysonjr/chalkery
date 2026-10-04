@@ -99,13 +99,13 @@ export const register: Register = on => {
     const pending = await read($, isPending)
     const done = await read($, handedOff)
     const cache = await readCacheMeter($)
-    const usd = `$${(cache?.rewriteUsd ?? 0).toFixed(2)}`
     // Хендоф сам читає весь контекст: поки кеш теплий, це дешево, після — один перезапис.
+    // Суму показує рядок cache-meter; тут лише що вона означає для хендофу.
     const coldHint =
       cache?.isBig && cache.kind === 'cooling'
-        ? ` кеш скоро охолоне, потім перезапис ≈ ${usd}: передавати зараз дешевше`
+        ? ' кеш скоро охолоне: передавати зараз дешевше'
         : cache?.kind === 'cold' && cache.isBig
-          ? ` кеш охолов: наступне повідомлення перезапише ≈ ${usd}`
+          ? ' кеш охолов: хендоф коштуватиме як звичайне повідомлення'
           : null
     const isHeavy = (used !== null && used >= THRESHOLD) || coldHint !== null
 
