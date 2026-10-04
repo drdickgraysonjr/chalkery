@@ -1,5 +1,4 @@
-// Shared source. Copied into each mod's hooks/ folder by _dev/sync-shared.mjs.
-// Edit it here, then run: node mods/_dev/sync-shared.mjs
+// From nateherkai/claude-code-mods (33a936f), where every mod carries a copy.
 
 // Dollars per million tokens, from the Claude API pricing table (cached 2026-09-25).
 // Cache writes cost 1.25x input on the 5-minute TTL and 2x input on the 1-hour TTL.

@@ -1,4 +1,4 @@
-// Shared source. Copied into each mod's hooks/ folder by _dev/sync-shared.mjs.
+// From nateherkai/claude-code-mods (33a936f), where every mod carries a copy.
 
 export function tokens(n) {
   const v = Number(n) || 0
