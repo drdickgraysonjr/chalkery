@@ -1,9 +1,10 @@
 {
   "name": "handoff-relay",
-  "version": "0.1.0",
-  "description": "Кнопка Handoff над полем вводу: запускає /handoff, підсвічується від 180k токенів контексту",
+  "version": "0.2.0",
+  "description": "Кнопка Handoff над полем вводу: запускає /handoff, підсвічується від 180k токенів контексту. Разом з cache-meter і next-steps складається в одну смугу.",
   "types": "./types/index.d.ts",
   "author": {
     "name": "Yehor Hunia"
-  }
+  },
+  "license": "MIT"
 }

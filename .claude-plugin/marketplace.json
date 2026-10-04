@@ -1,0 +1,27 @@
+{
+  "name": "claude-mods",
+  "description": "Моди Claude Code над полем вводу: Handoff, стан кешу промпту, «Що далі?». Ставляться окремо або паком і складаються в одну смугу.",
+  "owner": { "name": "Yehor Hunia" },
+  "plugins": [
+    {
+      "name": "prompt-band",
+      "source": "./plugins/prompt-band",
+      "description": "Пак: усі три моди однією командою."
+    },
+    {
+      "name": "handoff-relay",
+      "source": "./plugins/handoff-relay",
+      "description": "Кнопка Handoff над полем вводу, підсвічується від 180k токенів контексту."
+    },
+    {
+      "name": "cache-meter",
+      "source": "./plugins/cache-meter",
+      "description": "Стан кешу промпту: скільки ще теплий, скільки коштуватиме перекешування, «Тримати теплим»."
+    },
+    {
+      "name": "next-steps",
+      "source": "./plugins/next-steps",
+      "description": "Кнопка «Що далі?»: за натисканням пропонує до трьох наступних промптів."
+    }
+  ]
+}
