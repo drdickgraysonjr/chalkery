@@ -1,0 +1,9 @@
+{
+  "name": "handoff-relay",
+  "version": "0.1.0",
+  "description": "Кнопка Handoff над полем вводу: запускає /handoff, підсвічується від 180k токенів контексту",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Yehor Hunia"
+  }
+}
