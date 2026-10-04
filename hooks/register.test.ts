@@ -130,6 +130,10 @@ for (const surface of SURFACES) {
       expect((await ui.find({ text: /^●$/ }))?.props.color).toBe('green')
       expect((await ui.find({ text: /^ кеш теплий ще 60 хв$/ }))?.props.dimColor).toBe(true)
       expect(await ui.find({ text: /^перекешування коштуватиме ≈ \$1\.60$/ })).toBeDefined()
+      // Тримати теплим видно завжди, поки кеш теплий; тихо, бо час ще є
+      const keep = await ui.find({ key: 'keepwarm' })
+      expect(keep?.props.label).toBe('Тримати теплим')
+      expect(keep?.props.dimColor).toBe(true)
       expect(await ui.find({ text: /^engine row$/ })).toBeDefined()
     })
 
@@ -151,7 +155,7 @@ for (const surface of SURFACES) {
       await measure(9)
       const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
 
-      const text = (await ui.find({ key: 'cache-meter' }))?.text ?? ''
+      const text = (await ui.find({ key: 'parts' }))?.text ?? ''
       expect(text).toBe('● кеш теплий ще 60 хвперекешування коштуватиме ≈ $0.86')
       expect(text).not.toContain('контекст')
       expect(text).not.toContain('сесія')
@@ -185,6 +189,20 @@ for (const surface of SURFACES) {
       expect(await ui.find({ text: /^engine row$/ })).toBeDefined()
     })
 
+    test('великий кеш остигає: «Тримати теплим» уже не тихе', async ($, on) => {
+      const w = world($, on)
+      await start($)
+      await step($)
+      await w.clk.advance(56 * MIN)
+      const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
+
+      expect(await ui.find({ text: /^◐ кеш охолоне за/ })).toBeDefined()
+      const keep = await ui.find({ key: 'keepwarm' })
+      expect(keep?.props.label).toBe('Тримати теплим')
+      expect(keep?.props.dimColor).toBeUndefined()
+      expect(keep?.props.hotkey).toBe('k')
+    })
+
     test('холодний великий кеш: червоне попередження про перезапис', async ($, on) => {
       const w = world($, on)
       await start($)
@@ -193,6 +211,8 @@ for (const surface of SURFACES) {
       const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
 
       expect(await ui.find({ text: /^○ кеш охолов 1 хв тому$/ })).toBeDefined()
+      // Охололий кеш тримати вже нічого
+      expect(await ui.find({ key: 'keepwarm' })).toBeUndefined()
       const rewrite = await ui.find({ text: /^наступне повідомлення перекешує ≈ \$1\.60$/ })
       expect(rewrite).toBeDefined()
       expect(rewrite?.props.color).toBe('red')
@@ -211,7 +231,7 @@ for (const surface of SURFACES) {
 
       expect(await ui.find({ text: /^◆ тримаю кеш теплим до \d{1,2}:\d\d, 1 пінг \$0\.0\d$/ })).toBeDefined()
       const keep = await ui.find({ key: 'keepwarm' })
-      expect(keep?.props.label).toBe('не тримати')
+      expect(keep?.props.label).toBe('Не тримати')
       // Цифри лишаються за пропозиціями next-steps
       expect(keep?.props.hotkey).toBe('k')
     })

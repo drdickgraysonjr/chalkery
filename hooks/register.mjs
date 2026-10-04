@@ -455,10 +455,13 @@ export function register(on) {
     if (high.length) parts.push(Text(limitTone(high, { children: ['ліміти: ' + limitsText(high)] })))
     // A gap, not a separator glyph, between the parts
     const row = [Box({ key: 'parts', flexDirection: 'row', columnGap: 3, children: parts })]
-    if (st.kind === 'cooling' && big) {
-      row.push(Button({ key: 'keepwarm', label: 'тримати теплим', hotkey: 'k', plain: true, onPress: async () => { now = await $.clock.now(); startKeepWarm($, settings.keepWarmHours); await publish($); $.ui.invalidate('ui.render') } }))
+    // Keep warm is on offer whenever there is a warm cache to keep: quiet while there is time,
+    // loud once a big cache is about to cool
+    if (st.kind === 'warm' || st.kind === 'cooling') {
+      const isUrgent = st.kind === 'cooling' && big
+      row.push(Button({ key: 'keepwarm', label: 'Тримати теплим', hotkey: 'k', plain: true, ...(isUrgent ? {} : { dimColor: true }), onPress: async () => { now = await $.clock.now(); startKeepWarm($, settings.keepWarmHours); await publish($); $.ui.invalidate('ui.render') } }))
     } else if (st.kind === 'kept') {
-      row.push(Button({ key: 'keepwarm', label: 'не тримати', hotkey: 'k', plain: true, onPress: async () => { now = await $.clock.now(); stopKeepWarm($, 'вимкнено'); await publish($); $.ui.invalidate('ui.render') } }))
+      row.push(Button({ key: 'keepwarm', label: 'Не тримати', hotkey: 'k', plain: true, onPress: async () => { now = await $.clock.now(); stopKeepWarm($, 'вимкнено'); await publish($); $.ui.invalidate('ui.render') } }))
     }
     const mine = Box({ key: 'cache-meter', flexDirection: 'row', columnGap: 3, children: row })
     return Box({ flexDirection: 'column', children: below ? [mine, below] : [mine] })
