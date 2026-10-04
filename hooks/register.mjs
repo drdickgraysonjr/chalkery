@@ -279,7 +279,9 @@ export function register(on) {
           $.ui.toast(`Could not start /${handoff}: ${String((err && err.message) || err).slice(0, 100)}`, { timeoutMs: 8000 })
         }),
       )
-      return { drop: `Not sent: running /${handoff} instead of rewriting the cold cache (about ${cost})` }
+      // The handoff turn still reads the whole context, so it pays this rewrite once;
+      // what it saves is every later turn in a context this big
+      return { drop: `Not sent: running /${handoff}. It rewrites the cold cache once (about ${cost}), then the next session starts small.` }
     }
     $.ui.toast('Not sent. A fresh session with a short handoff avoids the rewrite entirely.', { timeoutMs: 8000 })
     return { drop: 'Cancelled by cache-meter before a cold cache rewrite' }
