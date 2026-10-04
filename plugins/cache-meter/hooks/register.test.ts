@@ -1,5 +1,14 @@
-import { describe, expect, mock, test } from 'claude-code/testing'
+import { describe, expect, mock, test as kitTest } from 'claude-code/testing'
 import type { On } from 'claude-code'
+import en from './locales/en.mjs'
+import uk from './locales/uk.mjs'
+
+// Тести нижче писано під українські написи: мова мода тут uk, якщо тест не задав іншу
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const test = (name: string, ...rest: any[]) =>
+  rest.length === 1
+    ? kitTest(name, { options: { language: 'uk' } }, rest[0])
+    : kitTest(name, { ...rest[0], options: { language: 'uk', ...rest[0].options } }, rest[1])
 
 // Сусідні моди репо: кожен вкладає свій рядок у спільну смугу так само, як справжній.
 const fakeHandoffRelay = {
@@ -405,3 +414,40 @@ for (const surface of SURFACES) {
     expect(await ui.find({ text: /^Перекешовано 1 раз: \$1\.60$/ })).toBeDefined()
   })
 }
+
+// Мова: en за явною опцією, auto за мовою відповідей Claude з /config, англійська без неї
+for (const surface of ['terminal', 'desktop'] as const) {
+  test(`${surface}: language en — смуга англійською`, { options: { language: 'en' } }, async ($, on) => {
+    world($, on)
+    await start($)
+    await step($)
+    const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
+    expect(await ui.find({ text: /^ Cache warm for 60 min$/ })).toBeDefined()
+    expect(await ui.find({ text: /^Re-caching would cost ≈ \$1\.60$/ })).toBeDefined()
+    expect((await ui.find({ key: 'keepwarm' }))?.props.label).toBe('Keep warm')
+    expect(await ui.find({ text: /Кеш/ })).toBeUndefined()
+  })
+
+  test(`${surface}: language auto без /config — англійська`, { options: { language: 'auto' } }, async ($, on) => {
+    world($, on)
+    await start($)
+    await step($)
+    const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
+    expect((await ui.find({ key: 'keepwarm' }))?.props.label).toBe('Keep warm')
+  })
+
+  test(`${surface}: language auto, у /config мова ukrainian — українська`, { options: { language: 'auto' } }, async ($, on) => {
+    world($, on)
+    on('config.list', () => ({ value: [{ key: 'language', label: 'Language', kind: 'text', value: 'ukrainian', provider: { kind: 'engine' }, isLocked: false }] }) as never)
+    await start($)
+    await step($)
+    const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
+    expect((await ui.find({ key: 'keepwarm' }))?.props.label).toBe('Тримати теплим')
+  })
+}
+
+kitTest('переклади: в en і uk однаковий набір ключів', async () => {
+  const keys = (o: object): string[] =>
+    Object.entries(o).flatMap(([k, v]) => (v && typeof v === 'object' ? keys(v).map((n) => `${k}.${n}`) : [k])).sort()
+  expect(keys(uk)).toEqual(keys(en))
+})
