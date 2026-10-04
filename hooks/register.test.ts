@@ -124,31 +124,39 @@ for (const surface of SURFACES) {
       const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
 
       const row = await ui.find({ key: 'cache-meter' })
-      expect(row?.text).toMatch(/^● кеш теплий ще 60 хв │ контекст 200k │ перезапис ≈ \$1\.60 │ сесія \$0$/)
+      expect(row?.text).toMatch(/^● кеш теплий ще 60 хв │ перекешування коштуватиме ≈ \$1\.60$/)
       expect(await ui.find({ text: /^engine row$/ })).toBeDefined()
     })
 
-    test('ліміти плану й вартість сесії з session.measure', async ($, on) => {
+    test('без контексту й сесії; ліміти лише від 80%', async ($, on) => {
       world($, on)
       on('session.measure', (_$, e) => ({ changed: e.changed }))
       await start($)
       await step($)
-      await $.session.measure({
-        context: { tokens: 108_000, window: 1_000_000 },
-        rateLimits: [
-          { kind: 'five_hour', percentUsed: 9 },
-          { kind: 'seven_day', percentUsed: 59 },
-        ],
-        cost: { usd: 0.92 },
-        changed: ['context', 'rateLimits', 'cost'],
-      } as never)
+      const measure = (fiveHour: number) =>
+        $.session.measure({
+          context: { tokens: 108_000, window: 1_000_000 },
+          rateLimits: [
+            { kind: 'five_hour', percentUsed: fiveHour },
+            { kind: 'seven_day', percentUsed: 59 },
+          ],
+          cost: { usd: 0.92 },
+          changed: ['context', 'rateLimits', 'cost'],
+        } as never)
+      await measure(9)
       const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
 
       const text = (await ui.find({ key: 'cache-meter' }))?.text ?? ''
-      expect(text).toContain('контекст 108k')
-      expect(text).toContain('перезапис ≈ $0.86')
-      expect(text).toContain('│ ліміти: 5 год 9% · тиждень 59% │')
-      expect(text).toContain('сесія $0.92')
+      expect(text).toBe('● кеш теплий ще 60 хв │ перекешування коштуватиме ≈ $0.86')
+      expect(text).not.toContain('контекст')
+      expect(text).not.toContain('сесія')
+      expect(text).not.toContain('ліміти')
+
+      await measure(84)
+      const ui84 = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
+      const limits = await ui84.find({ text: /^ │ ліміти: 5 год 84%$/ })
+      expect(limits?.props.color).toBe('yellow')
+      expect((await ui84.find({ key: 'cache-meter' }))?.text).not.toContain('тиждень')
     })
 
     test('до першого запиту смуги немає, лишається рядок рушія', async ($, on) => {
@@ -180,7 +188,7 @@ for (const surface of SURFACES) {
       const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
 
       expect(await ui.find({ text: /^○ кеш охолов 1 хв тому$/ })).toBeDefined()
-      const rewrite = await ui.find({ text: /^ │ наступне повідомлення перезапише його ≈ \$1\.60$/ })
+      const rewrite = await ui.find({ text: /^ │ наступне повідомлення перекешує ≈ \$1\.60$/ })
       expect(rewrite).toBeDefined()
       expect(rewrite?.props.color).toBe('red')
     })
@@ -278,7 +286,7 @@ test('теплий кеш або малий контекст: питання н�
 })
 
 for (const surface of SURFACES) {
-  test(`${surface}: відмінювання і години — 2 пінги, 1 год 05 хв, охолов 1 раз`, async ($, on) => {
+  test(`${surface}: відмінювання і години — 2 пінги, 1 год 05 хв, перекешовано 1 раз`, async ($, on) => {
     const w = world($, on)
     await start($)
     await step($)
@@ -300,6 +308,6 @@ for (const surface of SURFACES) {
     w.setWrite(200_000)
     await step($)
     const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
-    expect(await ui.find({ text: /^ │ охолов 1 раз: \$1\.60$/ })).toBeDefined()
+    expect(await ui.find({ text: /^ │ перекешовано 1 раз: \$1\.60$/ })).toBeDefined()
   })
 }

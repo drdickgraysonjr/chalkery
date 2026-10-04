@@ -64,6 +64,12 @@ function clock(ts) {
   return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0')
 }
 
+// How many full re-caches this session had, and what they cost
+function restarts() {
+  const n = S.coldRestarts.length
+  return `${n} ${plural(n, 'раз', 'рази', 'разів')}: ${usd(S.coldRestarts.reduce((a, c) => a + c.usd, 0))}`
+}
+
 function pings(n) {
   return `${n} ${plural(n, 'пінг', 'пінги', 'пінгів')}`
 }
@@ -212,7 +218,7 @@ function warnStep($) {
   if (alerted === key) return
   alerted = key
   const cost = usd(rewriteCost(S.ctx, S.model, ttlMin()))
-  $.ui.toast(`Кеш на ${tokens(S.ctx)} токенів охолоне за ${minutes(st.left)}. Перезаписати його коштуватиме ≈ ${cost}. Набери /${names.keepwarm} або натисни 1, щоб тримати його теплим.`, { timeoutMs: 15000 })
+  $.ui.toast(`Кеш на ${tokens(S.ctx)} токенів охолоне за ${minutes(st.left)}. Перекешування коштуватиме ≈ ${cost}. Набери /${names.keepwarm} або натисни 1, щоб тримати його теплим.`, { timeoutMs: 15000 })
 }
 
 async function tick($) {
@@ -235,10 +241,10 @@ function statusText() {
   lines.push(`cache-meter: у контексті ${tokens(S.ctx)} токенів, модель ${priceFor(S.model).id}, кеш живе ${ttl} хв (${settings.ttlMin ? 'задано вручну' : TTL_SOURCE[S.ttlSource] || S.ttlSource}).`)
   if (st.kind === 'unknown') lines.push('У цій сесії ще не було запиту, тож стан кешу невідомий.')
   if (st.kind === 'warm' || st.kind === 'cooling') lines.push(`Кеш теплий ще ≈ ${minutes(st.left)}.`)
-  if (st.kind === 'cold') lines.push(`Кеш охолов ${minutes(-st.left)} тому. Наступне повідомлення перезапише його ≈ за ${usd(rewriteCost(S.ctx, S.model, ttl))}.`)
+  if (st.kind === 'cold') lines.push(`Кеш охолов ${minutes(-st.left)} тому. Наступне повідомлення перекешує його ≈ за ${usd(rewriteCost(S.ctx, S.model, ttl))}.`)
   if (S.keepWarm) lines.push(`Тримаю кеш теплим до ${clock(S.keepWarmUntil)}: поки що ${pings(S.pings)} на ${usd(S.pingUsd)}.`)
   if (S.rateLimits.length) lines.push(`Використано лімітів плану: ${limitsText(S.rateLimits)}.`)
-  lines.push(`Сесія поки коштувала ${usd(S.costUsd)}. Кеш охолов і перезаписався ${S.coldRestarts.length} ${plural(S.coldRestarts.length, 'раз', 'рази', 'разів')}: ${usd(S.coldRestarts.reduce((a, c) => a + c.usd, 0))}.`)
+  lines.push(`Сесія поки коштувала ${usd(S.costUsd)}. Перекешовано ${restarts()}.`)
   lines.push(`Питання перед відправкою в охололий кеш: ${settings.guard ? 'увімкнено' : 'вимкнено'}, для контексту від ${tokens(settings.bigTokens)} токенів. Попередження: ${settings.alerts ? 'увімкнено' : 'вимкнено'}.`)
   lines.push(`Налаштування: /${names.cache} ttl 5|60|auto, /${names.cache} guard on|off, /${names.cache} big 150k, /${names.cache} alerts on|off. Тримати теплим: /${names.keepwarm} [години|off].`)
   return lines.join('\n')
@@ -311,10 +317,10 @@ export function register(on) {
       )
       // The handoff turn still reads the whole context, so it pays this rewrite once;
       // what it saves is every later turn in a context this big
-      return { drop: `Не надіслано: запускаю /${handoff}. Він один раз перезапише охололий кеш (≈ ${cost}), зате наступна сесія почнеться з малого контексту.` }
+      return { drop: `Не надіслано: запускаю /${handoff}. Він один раз перекешує контекст (≈ ${cost}), зате наступна сесія почнеться з малого контексту.` }
     }
-    $.ui.toast('Не надіслано. Нова сесія з коротким хендофом обійдеться без цього перезапису.', { timeoutMs: 8000 })
-    return { drop: 'Скасовано: cache-meter зупинив перезапис охололого кешу' }
+    $.ui.toast('Не надіслано. Нова сесія з коротким хендофом обійдеться без цього перекешування.', { timeoutMs: 8000 })
+    return { drop: 'Скасовано: cache-meter зупинив перекешування' }
   })
 
   on('turn.start', async ($, e, next) => {
@@ -439,12 +445,13 @@ export function register(on) {
     else if (st.kind === 'warm') parts.push(Text({ color: 'green', children: [`● кеш теплий ще ${minutes(st.left)}`] }))
     else if (st.kind === 'cooling') parts.push(Text({ color: 'yellow', bold: true, children: [`◐ кеш охолоне за ${minutes(st.left)}`] }))
     else if (st.kind === 'cold') parts.push(Text(big ? { color: 'red', bold: true, children: [`○ кеш охолов ${minutes(-st.left)} тому`] } : { dimColor: true, children: [`○ кеш охолов ${minutes(-st.left)} тому`] }))
-    parts.push(Text({ dimColor: true, children: [` │ контекст ${tokens(S.ctx)}`] }))
-    if (st.kind === 'cold' && big) parts.push(Text({ color: 'red', children: [` │ наступне повідомлення перезапише його ≈ ${usd(rewriteCost(S.ctx, S.model, ttl))}`] }))
-    else parts.push(Text({ dimColor: true, children: [` │ перезапис ≈ ${usd(rewriteCost(S.ctx, S.model, ttl))}`] }))
-    if (S.rateLimits.length) parts.push(Text(limitTone(S.rateLimits, { children: [' │ ліміти: ' + limitsText(S.rateLimits)] })))
-    parts.push(Text({ dimColor: true, children: [` │ сесія ${usd(S.costUsd)}`] }))
-    if (S.coldRestarts.length) parts.push(Text({ dimColor: true, children: [` │ охолов ${S.coldRestarts.length} ${plural(S.coldRestarts.length, 'раз', 'рази', 'разів')}: ${usd(S.coldRestarts.reduce((a, c) => a + c.usd, 0))}`] }))
+    const rewrite = usd(rewriteCost(S.ctx, S.model, ttl))
+    if (st.kind === 'cold' && big) parts.push(Text({ color: 'red', children: [` │ наступне повідомлення перекешує ≈ ${rewrite}`] }))
+    else parts.push(Text({ dimColor: true, children: [` │ перекешування коштуватиме ≈ ${rewrite}`] }))
+    if (S.coldRestarts.length) parts.push(Text({ dimColor: true, children: [` │ перекешовано ${restarts()}`] }))
+    // Plan limits only when one is close to running out
+    const high = S.rateLimits.filter((l) => (l.percentUsed || 0) >= 80)
+    if (high.length) parts.push(Text(limitTone(high, { children: [' │ ліміти: ' + limitsText(high)] })))
     const row = [Box({ key: 'parts', flexDirection: 'row', children: parts })]
     if (st.kind === 'cooling' && big) {
       row.push(Button({ key: 'keepwarm', label: 'тримати теплим', hotkey: '1', plain: true, onPress: async () => { now = await $.clock.now(); startKeepWarm($, settings.keepWarmHours); await publish($); $.ui.invalidate('ui.render') } }))
@@ -470,7 +477,7 @@ function footerLabel() {
   const big = isBig()
   if (st.kind === 'kept') parts.push('кеш тримаю теплим')
   else if (st.kind === 'cooling' && big) parts.push(`кеш охолоне за ${minutes(st.left)} · /keepwarm`)
-  else if (st.kind === 'cold' && big) parts.push(`кеш охолов · перезапис ≈ ${usd(rewriteCost(S.ctx, S.model, ttlMin()))}`)
+  else if (st.kind === 'cold' && big) parts.push(`кеш охолов · перекешування коштуватиме ≈ ${usd(rewriteCost(S.ctx, S.model, ttlMin()))}`)
   const high = S.rateLimits.filter((l) => (l.percentUsed || 0) >= 80)
   if (high.length) parts.push('ліміти: ' + limitsText(high))
   return parts.join(' · ')
