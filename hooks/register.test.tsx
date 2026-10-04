@@ -188,7 +188,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ key: 'ask' })).toBeUndefined()
     })
 
-    test('кеш охолов: біля кнопки ціна перезапису', { plugins: [fakeCacheMeter] }, async ($, on) => {
+    test('кеш охолов: біля кнопки лише ціна натискання', { plugins: [fakeCacheMeter] }, async ($, on) => {
       engine(on)
       await $.turn.complete(turnEnd)
       await $.command.run({
@@ -196,7 +196,9 @@ for (const surface of SURFACES) {
       } as never)
       const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
 
-      expect((await ui.find({ text: /кеш охолов/ }))?.text).toContain('$1.20')
+      expect(await ui.find({ text: /^ ≈ \$1\.20$/ })).toBeDefined()
+      // Пояснення про кеш — у рядку cache-meter, тут його нема
+      expect(await ui.find({ text: /кеш/ })).toBeUndefined()
     })
 
     test('кеш теплий: підказки немає', { plugins: [fakeCacheMeter] }, async ($, on) => {
@@ -208,7 +210,38 @@ for (const surface of SURFACES) {
       const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
 
       expect(await ui.find({ key: 'ask' })).toBeDefined()
-      expect(await ui.find({ text: /кеш охолов/ })).toBeUndefined()
+      expect(await ui.find({ text: /\$/ })).toBeUndefined()
+    })
+
+    test('широка смуга: пропозиції й «сховати» в одному рядку із заголовком', async ($, on) => {
+      engine(on)
+      await $.turn.complete(turnEnd)
+      const ui = await $.ui.mount({
+        plugin: 'next-steps', surface, component: 'AbovePrompt', props: { ...props, bodyColumns: 120 },
+      })
+
+      await ui.press({ key: 'ask' })
+      const offer = await ui.find({ key: 'next-steps-offer' })
+      expect(offer?.props.flexDirection).toBe('row')
+      expect(offer?.props.columnGap).toBe(3)
+      expect(offer?.text).toContain('Що далі:')
+      expect(offer?.text).toContain('сховати')
+      expect(await ui.find({ key: 'next-steps-head' })).toBeUndefined()
+    })
+
+    test('вузька смуга: заголовок із «сховати», пункти під ним без відступу', async ($, on) => {
+      engine(on)
+      await $.turn.complete(turnEnd)
+      const ui = await $.ui.mount({
+        plugin: 'next-steps', surface, component: 'AbovePrompt', props: { ...props, bodyColumns: 50 },
+      })
+
+      await ui.press({ key: 'ask' })
+      expect((await ui.find({ key: 'next-steps-offer' }))?.props.flexDirection).toBe('column')
+      const head = await ui.find({ key: 'next-steps-head' })
+      expect(head?.text).toContain('Що далі:')
+      expect(head?.text).toContain('сховати')
+      expect((await ui.find({ key: 's0' }))?.props.label).toBe('Опублікуй сторінку')
     })
   })
 }

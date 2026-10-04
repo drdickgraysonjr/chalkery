@@ -162,6 +162,25 @@ const NO_REPLY: Record<string, string> = {
   aborted: 'запит перервано',
 }
 
+// Проміжок між частинами рядка, той самий, що в cache-meter.
+const GAP = 3
+// Десктоп малює кнопку з цифрою ширшою за її текст; закладаємо запас на кожну.
+const BUTTON_CHROME = 5
+
+function fitsOneRow(items: readonly Suggestion[], columns: number): boolean {
+  const labels = items.reduce((sum, item) => sum + [...item.label].length + BUTTON_CHROME, 0)
+  const width = 'Що далі:'.length + labels + 'сховати'.length + BUTTON_CHROME + GAP * (items.length + 1)
+  return width <= columns
+}
+
+// Як usd() у cache-meter, щоб одна сума в смузі читалась однаково.
+function usd(n: number): string {
+  if (n === 0) return '$0'
+  if (n < 0.01) return '<$0.01'
+  if (n < 10) return `$${n.toFixed(2)}`
+  return `$${n.toFixed(0)}`
+}
+
 // Натиснуто «Що далі?»: питаємо fork і показуємо, що він запропонував.
 async function ask($: Engine, suggestsSkills: boolean): Promise<void> {
   if ((await read($, view)).kind !== 'ready') return
@@ -222,16 +241,14 @@ export const register: Register = (on, options) => {
 
     let mine: RenderElement
     if (current.kind === 'ready') {
-      // Після паузи кеш міг охолонути: тоді fork перепише контекст, і це варто знати до натискання.
+      // Після паузи кеш міг охолонути: тоді fork перепише контекст. Пояснення стоїть у рядку
+      // cache-meter, тут лише ціна саме цього натискання.
       const cache = await readCacheMeter($)
-      const coldHint =
-        cache?.kind === 'cold' && cache.isBig
-          ? ` кеш охолов: підбір перезапише контекст ≈ $${cache.rewriteUsd.toFixed(2)}`
-          : null
+      const price = cache?.kind === 'cold' && cache.isBig ? ` ≈ ${usd(cache.rewriteUsd)}` : null
       mine = (
         <Box key="next-steps-ask">
           <Button key="ask" label="Що далі?" dimColor onPress={() => ask($, suggestsSkills)} />
-          {coldHint !== null ? <Text dimColor>{coldHint}</Text> : null}
+          {price !== null ? <Text dimColor>{price}</Text> : null}
         </Box>
       )
     } else if (current.kind === 'loading') {
@@ -241,27 +258,36 @@ export const register: Register = (on, options) => {
         </Box>
       )
     } else {
-      mine = (
-        <Box key="next-steps-offer" flexDirection="column">
+      const items = current.items.map((item, index) => (
+        <Button
+          key={`s${index}`}
+          hotkey={String(index + 1)}
+          plain
+          label={item.label}
+          onPress={async () => {
+            await update($, view, () => HIDDEN)
+            const r = await $.prompt.fill({ text: item.prompt }).catch(() => null)
+            if (r === null || !r.isFilled) $.ui.toast('Не вдалося вставити промпт у поле вводу')
+          }}
+        />
+      ))
+      const dismiss = (
+        <Button key="dismiss" hotkey="0" plain label="сховати" onPress={() => update($, view, () => READY)} />
+      )
+      // Влазить в один рядок — один рядок; ні — заголовок із «сховати», під ним пункти.
+      mine = fitsOneRow(current.items, e.props.bodyColumns) ? (
+        <Box key="next-steps-offer" flexDirection="row" columnGap={GAP}>
           <Text dimColor>Що далі:</Text>
-          {current.items.map((item, index) => (
-            <Box key={`row${index}`} marginLeft={2}>
-              <Button
-                key={`s${index}`}
-                hotkey={String(index + 1)}
-                plain
-                label={item.label}
-                onPress={async () => {
-                  await update($, view, () => HIDDEN)
-                  const r = await $.prompt.fill({ text: item.prompt }).catch(() => null)
-                  if (r === null || !r.isFilled) $.ui.toast('Не вдалося вставити промпт у поле вводу')
-                }}
-              />
-            </Box>
-          ))}
-          <Box marginLeft={2}>
-            <Button key="dismiss" hotkey="0" plain label="сховати" onPress={() => update($, view, () => READY)} />
+          {items}
+          {dismiss}
+        </Box>
+      ) : (
+        <Box key="next-steps-offer" flexDirection="column">
+          <Box key="next-steps-head" flexDirection="row" columnGap={GAP}>
+            <Text dimColor>Що далі:</Text>
+            {dismiss}
           </Box>
+          {items}
         </Box>
       )
     }
