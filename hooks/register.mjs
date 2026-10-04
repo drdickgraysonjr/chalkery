@@ -467,7 +467,8 @@ export function register(on) {
     // Every part, the button too, is set off from the next by the same dim bar
     const row = parts.flatMap((p, i) => i ? [Text({ key: `bar${i}`, dimColor: true, children: ['│'] }), p] : [p])
     const mine = Box({ key: 'cache-meter', flexDirection: 'row', columnGap: 1, children: row })
-    return Box({ flexDirection: 'column', children: below ? [mine, below] : [mine] })
+    // Half a row to the bands below: a whole row reads as an empty paragraph
+    return Box({ key: 'cache-meter-stack', flexDirection: 'column', rowGap: 0.5, children: below ? [mine, below] : [mine] })
   })
 
   // A short label in the footer, only when there's something to act on

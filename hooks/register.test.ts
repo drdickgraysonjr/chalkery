@@ -142,6 +142,8 @@ for (const surface of SURFACES) {
       expect(keep?.props.plain).toBeUndefined()
       expect(keep?.props.hotkey).toBe(surface === 'terminal' ? 'k' : undefined)
       expect(await ui.find({ text: /^engine row$/ })).toBeDefined()
+      // Рядки смуги розсунуто на пів рядка, не на цілий порожній
+      expect((await ui.find({ key: 'cache-meter-stack' }))?.props.rowGap).toBe(0.5)
     })
 
     test('без контексту й сесії; ліміти лише від 80%', async ($, on) => {
