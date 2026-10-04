@@ -1,6 +1,8 @@
-# claude-mods
+# chalkery
 
 English | [Українська](README.uk.md)
+
+A chalkery is where the chalk lives: a home for Claude Code mods that draw above the prompt.
 
 Three Claude Code mods that draw a band above the prompt, in the terminal and in the desktop app's Code tab.
 
@@ -17,19 +19,19 @@ Install them one by one or all at once. In any combination they form one band, a
 Add the marketplace first:
 
 ```bash
-claude plugin marketplace add drdickgraysonjr/claude-mods
+claude plugin marketplace add drdickgraysonjr/chalkery
 ```
 
-All three mods in one command:
+All three mods in one command. The pack is called primaries: three mods, like three primary colours.
 
 ```bash
-claude plugin install prompt-band@claude-mods
+claude plugin install primaries@chalkery
 ```
 
 Or just the one you need:
 
 ```bash
-claude plugin install cache-meter@claude-mods
+claude plugin install cache-meter@chalkery
 ```
 
 In the desktop app the same is under Plugins → Add plugin: the Marketplaces tab, then Add marketplace. The mods start working from the next session.
@@ -37,21 +39,21 @@ In the desktop app the same is under Plugins → Add plugin: the Marketplaces ta
 When a new version is out, refresh the catalog, then each installed mod:
 
 ```bash
-claude plugin marketplace update claude-mods
+claude plugin marketplace update chalkery
 ```
 
 ```bash
-claude plugin update cache-meter@claude-mods
+claude plugin update cache-meter@chalkery
 ```
 
-To remove the pack: `claude plugin uninstall prompt-band@claude-mods`. The three mods it installed stay; `claude plugin prune` removes them too.
+To remove the pack: `claude plugin uninstall primaries@chalkery`. The three mods it installed stay; `claude plugin prune` removes them too.
 
 ## Language
 
 The mods speak English and Ukrainian. Each has a `language` option: `auto` (the default), `en` or `uk`. With `auto`, the mods follow Claude's response language from `/config`, so one setting covers all three; a language the mods do not have, or none, gives English. To set it explicitly, change the option in `/config`, or pass it at install time:
 
 ```bash
-claude plugin install cache-meter@claude-mods --config language=uk
+claude plugin install cache-meter@chalkery --config language=uk
 ```
 
 ## next-steps options
@@ -70,7 +72,7 @@ After install the CLI says that some options are not set. All of them have defau
 .claude-plugin/marketplace.json   the catalog: the pack and three mods
 plugins/<mod>/                    each mod stands alone and installs on its own
 plugins/<mod>/hooks/locales/      en.mjs and uk.mjs: every word the mod shows a person
-plugins/prompt-band/              the pack: only dependencies on the three mods
+plugins/primaries/              the pack: only dependencies on the three mods
 shared/band.mjs                   the shared band contract
 shared/i18n.mjs                   picking the language for the language option
 scripts/sync-shared.sh            copies shared/*.mjs into each mod's hooks/

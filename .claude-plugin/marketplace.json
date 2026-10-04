@@ -1,14 +1,14 @@
 {
-  "name": "claude-mods",
+  "name": "chalkery",
   "description": "Claude Code mods above the prompt: Handoff, prompt cache status, What next?. Install them one by one or as a pack; together they form one band. English and Ukrainian.",
   "owner": {
     "name": "Yehor Hunia"
   },
   "plugins": [
     {
-      "name": "prompt-band",
-      "source": "./plugins/prompt-band",
-      "description": "The pack: all three mods in one install."
+      "name": "primaries",
+      "source": "./plugins/primaries",
+      "description": "The pack: all three mods in one install, like three primary colours."
     },
     {
       "name": "handoff-relay",

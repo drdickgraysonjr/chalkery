@@ -1,6 +1,8 @@
-# claude-mods
+# chalkery
 
 [English](README.md) | Українська
+
+Chalkery — місце, де лежить крейда: дім для модів Claude Code, які малюють над полем вводу.
 
 Три моди для Claude Code, які малюють смугу над полем вводу. Працюють у терміналі й у вкладці Code десктопного застосунку.
 
@@ -17,19 +19,19 @@
 Спершу додайте маркетплейс:
 
 ```bash
-claude plugin marketplace add drdickgraysonjr/claude-mods
+claude plugin marketplace add drdickgraysonjr/chalkery
 ```
 
-Усі три моди однією командою:
+Усі три моди однією командою. Пак називається primaries: три моди, як три основні кольори.
 
 ```bash
-claude plugin install prompt-band@claude-mods
+claude plugin install primaries@chalkery
 ```
 
 Або лише потрібний:
 
 ```bash
-claude plugin install cache-meter@claude-mods
+claude plugin install cache-meter@chalkery
 ```
 
 У десктопному застосунку те саме є в меню Plugins → Add plugin: вкладка Marketplaces, потім Add marketplace. Моди починають працювати з наступної сесії.
@@ -37,21 +39,21 @@ claude plugin install cache-meter@claude-mods
 Коли виходить нова версія, спершу оновіть каталог, потім кожен встановлений мод:
 
 ```bash
-claude plugin marketplace update claude-mods
+claude plugin marketplace update chalkery
 ```
 
 ```bash
-claude plugin update cache-meter@claude-mods
+claude plugin update cache-meter@chalkery
 ```
 
-Видалити пак: `claude plugin uninstall prompt-band@claude-mods`. Три моди, які він поставив, після цього лишаються встановленими. Щоб прибрати і їх, виконайте `claude plugin prune`.
+Видалити пак: `claude plugin uninstall primaries@chalkery`. Три моди, які він поставив, після цього лишаються встановленими. Щоб прибрати і їх, виконайте `claude plugin prune`.
 
 ## Мова
 
 Моди говорять англійською й українською. Кожен має опцію `language` зі значеннями `auto` (за замовчуванням), `en` або `uk`. З `auto` моди беруть мову відповідей Claude з `/config`, тож одне налаштування діє на всі три. Якщо мову там не задано або модам вона невідома, вони показують англійську. Задати мову явно можна в `/config` або одразу при встановленні:
 
 ```bash
-claude plugin install cache-meter@claude-mods --config language=uk
+claude plugin install cache-meter@chalkery --config language=uk
 ```
 
 ## Опції next-steps
@@ -70,7 +72,7 @@ claude plugin install cache-meter@claude-mods --config language=uk
 .claude-plugin/marketplace.json   каталог: пак і три моди
 plugins/<мод>/                    кожен мод самодостатній, ставиться окремо
 plugins/<мод>/hooks/locales/      en.mjs і uk.mjs: усі написи, які бачить людина
-plugins/prompt-band/              пак: лише dependencies на три моди
+plugins/primaries/              пак: лише dependencies на три моди
 shared/band.mjs                   договір спільної смуги
 shared/i18n.mjs                   вибір мови за опцією language
 scripts/sync-shared.sh            копіює shared/*.mjs у hooks/ кожного мода

@@ -1,0 +1,14 @@
+{
+  "name": "primaries",
+  "version": "0.1.0",
+  "description": "All three mods in one install: Handoff, cache status and What next? above the prompt, in one band. Three mods, like three primary colours.",
+  "author": {
+    "name": "Yehor Hunia"
+  },
+  "license": "MIT",
+  "dependencies": [
+    "handoff-relay",
+    "cache-meter",
+    "next-steps"
+  ]
+}
