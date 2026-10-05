@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Cache Meter: watches this session's prompt cache, keeps a big cache warm on
 // request, and asks before a cold send. The cache part of Nate Herk's
 // cache-keeper (nateherkai/claude-code-mods), without its board, its handoff

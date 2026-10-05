@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Modified by Yehor Hunia, 2026, from anthropics/claude-plugins-community@87c843d (next-steps).
 // Усе, що next-steps показує людині, українською. Ключі ті самі, що в en.mjs.
 
 export default {

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // From nateherkai/claude-code-mods (33a936f), where every mod carries a copy.
 
 export function tokens(n) {

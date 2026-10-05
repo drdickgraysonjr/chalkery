@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Everything cache-meter shows a person, in English. Same keys as uk.mjs.
 
 const plural = (n, one, many) => (n === 1 ? one : many)

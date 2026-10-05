@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Усе, що cache-meter показує людині, українською. Ключі ті самі, що в en.mjs.
 
 function plural(n, one, few, many) {

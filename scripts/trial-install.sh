@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: MIT
 # Installs the primaries pack into a throwaway HOME from a marketplace source (a path
 # such as ./ or a GitHub owner/repo) and checks that the pack and all three mods are
 # installed and enabled.

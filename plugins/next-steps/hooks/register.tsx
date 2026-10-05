@@ -1,14 +1,17 @@
 /* @jsxRuntime classic */
 /* @jsx h */
 /* @jsxFrag Fragment */
-// next-steps на вимогу: після відповіді над полем вводу лише кнопка «Що далі?».
-// Натиснув — мод робить fork сесії (спільний з нею кеш промпту, тож це ціна однієї
-// короткої відповіді) і просить до трьох імовірних наступних промптів. Вони стають
-// кнопками 1/2/3; натискання кладе промпт у поле вводу як чернетку ($.prompt.fill),
-// Enter тисне людина; 0 ховає. Перша пропозиція ще й сірим текстом у полі, Tab бере
-// ($.prompt.suggest). Мод нічого не відправляє сам. Fork отримує скіли й слеш-команди
-// сесії ($.command.list), тож пропозиція може бути «/скіл аргументи».
-// Форк anthropics/claude-plugins-community/next-steps@87c843d: там fork ішов після кожного ходу.
+// SPDX-License-Identifier: Apache-2.0
+// Modified by Yehor Hunia, 2026, from anthropics/claude-plugins-community@87c843d (next-steps):
+// there the fork ran after every turn; here it runs only on demand.
+//
+// next-steps on demand: after a reply, only a "What next?" button above the prompt.
+// A press makes the mod fork the session (it shares the prompt cache, so it costs one
+// short reply) and ask for up to three likely next prompts. They become buttons 1/2/3;
+// a press puts that prompt in the prompt box as a draft ($.prompt.fill), and the person
+// presses Enter; 0 hides them. The first suggestion is also dim text in the box, Tab takes
+// it ($.prompt.suggest). The mod never sends anything itself. The fork gets the session's
+// skills and slash commands ($.command.list), so a suggestion can be "/skill arguments".
 
 import { joinBand } from './band.mjs'
 import { isLanguageKey, resolveLanguage } from './i18n.mjs'
@@ -140,10 +143,10 @@ function parseSuggestions(reply: string, known: ReadonlySet<string> | null): Sug
 }
 
 
-// Стан мода cache-meter, якщо його встановлено. Без нього мод працює: значення просто немає.
+// The cache-meter mod's state, if it is installed. The mod works without it: the value is just absent.
 const cacheMeter = { plugin: 'cache-meter', key: 'cache' } as const
 type Engine = Parameters<Hook<'ui.render'>>[0]
-// Чужий ключ не типізований у нашому контракті, тому приводимо сигнатуру на місці виклику.
+// Another mod's key is not typed in our contract, so the signature is cast at the call site.
 type GetCacheMeter = (ref: typeof cacheMeter) => Promise<{ value?: CacheMeterView }>
 const readCacheMeter = async ($: Engine): Promise<CacheMeterView | null> => {
   try {
@@ -153,13 +156,13 @@ const readCacheMeter = async ($: Engine): Promise<CacheMeterView | null> => {
   }
 }
 
-// У $.state, а не в змінній модуля: гаряче перезавантаження мода її обнулило б.
+// In $.state, not a module variable: a hot reload of the mod would reset that.
 const view = atom({ plugin: 'next-steps', key: 'view' } as const, { kind: 'hidden' } as View)
 
 const HIDDEN: View = { kind: 'hidden' }
 const READY: View = { kind: 'ready' }
 
-// Написи мовою, яку обирає опція language (auto: мова відповідей Claude з /config).
+// Text in the language the language option picks (auto: the language of Claude's replies from /config).
 const LOCALES = { en, uk }
 let L = en
 let language: unknown = 'auto'
@@ -171,15 +174,15 @@ const pickLanguage = async ($: Engine) => {
     try {
       rows = await $.config.list()
     } catch {
-      rows = [] // /config тут немає (тест, запуск -p): англійська
+      rows = [] // no /config here (a test, a -p run): English
     }
   }
   L = LOCALES[resolveLanguage(language, rows)]
 }
 
-// Проміжок між частинами рядка, той самий, що в cache-meter.
+// The gap between parts of a row, the same as in cache-meter.
 const GAP = 3
-// Десктоп малює кнопку з цифрою ширшою за її текст; закладаємо запас на кожну.
+// The desktop draws a numbered button wider than its text; leave room for each one.
 const BUTTON_CHROME = 5
 
 function fitsOneRow(items: readonly Suggestion[], columns: number): boolean {
@@ -188,13 +191,13 @@ function fitsOneRow(items: readonly Suggestion[], columns: number): boolean {
   return width <= columns
 }
 
-// Підписи кнопок з великої літери, як Handoff і «Сховати»; статус після кнопок — з малої.
+// Button labels start with a capital, like Handoff and "Hide"; the status after the buttons starts lowercase.
 function capitalize(text: string): string {
   const [first = '', ...rest] = [...text]
   return first.toLocaleUpperCase('uk') + rest.join('')
 }
 
-// Як usd() у cache-meter, щоб одна сума в смузі читалась однаково.
+// Like usd() in cache-meter, so the same amount reads the same across the band.
 function usd(n: number): string {
   if (n === 0) return '$0'
   if (n < 0.01) return '<$0.01'
@@ -214,7 +217,7 @@ function coldPrice(cache: CacheMeterView): string {
   return cache.unit === 'tokens' && cache.rewriteTokens ? L.tok(tokens(cache.rewriteTokens)) : usd(cache.rewriteUsd)
 }
 
-// Натиснуто «Що далі?»: питаємо fork і показуємо, що він запропонував.
+// "What next?" was pressed: ask the fork and show what it suggested.
 async function ask($: Engine, suggestsSkills: boolean): Promise<void> {
   if ((await read($, view)).kind !== 'ready') return
   const id = await $.clock.now()
@@ -223,7 +226,7 @@ async function ask($: Engine, suggestsSkills: boolean): Promise<void> {
   let items: Suggestion[] = []
   let failure: string | null = null
   try {
-    // Без списку fork усе одно підбирає; слеш-промпти тоді не перевіряються.
+    // Without the list the fork still suggests; slash prompts are just not checked then.
     const commands = await $.command.list().catch(() => null)
     const known = commands === null ? null : new Set(commands.map(command => command.name))
     const skills = suggestsSkills && commands !== null ? skillList(commands) : ''
@@ -234,7 +237,7 @@ async function ask($: Engine, suggestsSkills: boolean): Promise<void> {
     failure = String(error)
     $.ui.log(`fork failed: ${failure}`)
   }
-  // Поки чекали, почався новий хід або людина сховала смугу: відповідь уже не до речі.
+  // While we waited, a new turn started or the person hid the band: the reply is no longer relevant.
   const now = await read($, view)
   if (now.kind !== 'loading' || now.id !== id) return
   if (items.length === 0) {
@@ -253,7 +256,7 @@ export const register: Register = (on, options) => {
   language = options?.language
   if (language === 'en' || language === 'uk') L = LOCALES[language]
 
-  // Мову Claude змінили в /config: під auto мод іде за нею.
+  // Claude's language changed in /config: under auto the mod follows it.
   on('config.set', async ($, e, next) => {
     const result = await next(e)
     if (isLanguageKey(e.key)) {
@@ -263,13 +266,13 @@ export const register: Register = (on, options) => {
     return result
   })
 
-  // Новий хід (набраний чи будь-який інший) ховає все, що було запропоновано.
+  // A new turn (typed or any other) hides everything that was suggested.
   on('turn.start', async ($, e, next) => {
     await update($, view, () => HIDDEN)
     return next(e)
   })
 
-  // Хід завершився відповіддю: лише кнопка, модель ще не питали. Ходи субагентів не рахуємо.
+  // The turn ended with a reply: only the button, the model has not been asked yet. Subagent turns do not count.
   on('turn.complete', async ($, e, next) => {
     const result = await next(e)
     if (e.agentId !== undefined) return result
@@ -287,8 +290,8 @@ export const register: Register = (on, options) => {
 
     let mine: RenderElement
     if (current.kind === 'ready') {
-      // Після паузи кеш міг охолонути: тоді fork перепише контекст. Пояснення стоїть у рядку
-      // cache-meter, тут лише ціна саме цього натискання.
+      // After a pause the cache may have gone cold: then the fork rewrites the context. The
+      // explanation is in the cache-meter row; here is only the cost of this one press.
       const cache = await readCacheMeter($)
       const price = cache?.kind === 'cold' && cache.isBig ? ` ≈ ${coldPrice(cache)}` : null
       mine = (
@@ -317,12 +320,12 @@ export const register: Register = (on, options) => {
           }}
         />
       ))
-      // Та сама кнопка, що й згорнута: натискання згортає список, як і 0.
+      // The same button as when collapsed: a press collapses the list, as 0 does.
       const toggle = <Button key="ask" label={L.ask} dimColor onPress={() => update($, view, () => READY)} />
       const dismiss = (
         <Button key="dismiss" hotkey="0" plain label={L.dismiss} onPress={() => update($, view, () => READY)} />
       )
-      // Влазить в один рядок — один рядок; ні — заголовок із «сховати», під ним пункти.
+      // Fits on one line: one line; otherwise a heading with "hide" and the items below it.
       mine = fitsOneRow(current.items, e.props.bodyColumns) ? (
         <Box key="next-steps-offer" flexDirection="row" columnGap={GAP}>
           {toggle}
@@ -340,7 +343,7 @@ export const register: Register = (on, options) => {
       )
     }
 
-    // Своє місце в спільній смузі модів цього репо, хоч би в якому порядку їх завантажено.
+    // Our own slot in the shared band of this repo's mods, whatever order they loaded in.
     return joinBand(Box, 'next-steps', mine, below)
   })
 }

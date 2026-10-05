@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: MIT
 # Fails when a mod changed since its last release tag but its version did not go up.
 # Release tags are <mod>--v<version>, the form `claude plugin tag` creates and plugin
 # dependencies resolve against. A mod without a release tag yet is skipped.

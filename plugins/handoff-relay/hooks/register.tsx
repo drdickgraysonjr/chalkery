@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 import { joinBand } from './band.mjs'
 import { isLanguageKey, resolveLanguage } from './i18n.mjs'
 import en from './locales/en.mjs'

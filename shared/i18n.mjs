@@ -1,14 +1,16 @@
-// Мова того, що мод показує людині. Файл однаковий у кожному моді (копію кладе
-// scripts/sync-shared.sh), бо мод ставлять і окремо, без сусідів.
+// SPDX-License-Identifier: MIT
+// The language of what a mod shows a person. The file is the same in every mod
+// (scripts/sync-shared.sh puts the copy there), since a mod is also installed alone,
+// without its neighbours.
 //
-// Опція мода `language`: auto, en або uk. auto бере мову відповідей Claude з /config
-// (рядок language), тож один параметр Claude Code задає мову всім модам одразу.
-// Мова, якої в модів немає, або не задана, дає англійську.
+// The mod option `language`: auto, en or uk. auto takes the language of Claude's replies
+// from /config (the language row), so one Claude Code setting sets the language for all
+// mods at once. A language the mods do not have, or none set, gives English.
 
 export const LANGUAGES = ['en', 'uk']
 
 /**
- * Мова модів для значення з /config: «ukrainian», «українська», «uk» дають uk, решта en.
+ * The mods' language for a /config value: "ukrainian", "uk" or the word in Ukrainian give uk, anything else en.
  * @param {unknown} value
  * @returns {'en' | 'uk'}
  */
@@ -18,10 +20,10 @@ export function languageOf(value) {
 }
 
 /**
- * Мова для опції мода: en чи uk як є, auto (або порожньо) за мовою відповідей Claude.
- * Рядки /config мод читає сам ($ не передають у функції з іншого файлу).
+ * The language for the mod option: en or uk as is, auto (or empty) by the language of Claude's replies.
+ * The mod reads the /config rows itself ($ is not passed to functions from another file).
  * @param {unknown} option
- * @param {readonly { key: string, value: unknown }[]} rows рядки $.config.list(), або [] коли їх не прочитати
+ * @param {readonly { key: string, value: unknown }[]} rows the rows of $.config.list(), or [] when they cannot be read
  * @returns {'en' | 'uk'}
  */
 export function resolveLanguage(option, rows) {
@@ -31,7 +33,7 @@ export function resolveLanguage(option, rows) {
 }
 
 /**
- * Чи зміна рядка /config може змінити мову модів.
+ * Whether a change to a /config row can change the mods' language.
  * @param {string} key
  */
 export function isLanguageKey(key) {

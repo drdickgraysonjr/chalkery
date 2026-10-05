@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: MIT
 import { describe, expect, test as kitTest } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import en from './locales/en.mjs'
 import uk from './locales/uk.mjs'
 
-// Тести нижче писано під українські написи: мова мода тут uk, якщо тест не задав іншу
+// The tests below are written against the Ukrainian text: the mod's language here is uk unless a test sets another
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const test = (name: string, ...rest: any[]) =>
   rest.length === 1
@@ -13,12 +14,12 @@ const test = (name: string, ...rest: any[]) =>
 const ukrainianConfig = (on: On) =>
   on('config.list', () => ({ value: [{ key: 'language', label: 'Language', kind: 'text', value: 'українська', provider: { kind: 'engine' }, isLocked: false }] }) as never)
 
-// Сусідні моди репо: кожен вкладає свій рядок у спільну смугу так само, як справжній.
+// The repo's neighbouring mods: each puts its row into the shared band the same way the real one does.
 const fakeCacheMeterBand = {
   name: 'cache-meter',
   register: (on: On) => {
     on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-      // Плагін тесту живе в окремому середовищі без імпортів, тож злиття смуги тут своє, за тим самим договором
+      // A test plugin lives in its own environment without imports, so it merges the band itself, by the same contract
       const below = (await next(e)) as { type?: string; props?: { key?: string }; children?: unknown[] } | null
       const { Box, Text } = $.ui.resolve(e)
       const place = (row: { props?: { key?: string } }) => Number(String(row.props?.key ?? '').split(':')[1] ?? 999)
@@ -35,7 +36,7 @@ const fakeNextSteps = {
   name: 'next-steps',
   register: (on: On) => {
     on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-      // Плагін тесту живе в окремому середовищі без імпортів, тож злиття смуги тут своє, за тим самим договором
+      // A test plugin lives in its own environment without imports, so it merges the band itself, by the same contract
       const below = (await next(e)) as { type?: string; props?: { key?: string }; children?: unknown[] } | null
       const { Box, Text } = $.ui.resolve(e)
       const place = (row: { props?: { key?: string } }) => Number(String(row.props?.key ?? '').split(':')[1] ?? 999)
@@ -60,7 +61,7 @@ const bandKeys = async (ui: { drawn: () => Promise<unknown> }) => {
   return (tree.children ?? []).map((row) => row.props?.key)
 }
 
-// Рушій під плагінами завжди щось малює над полем вводу; мод має це лишити.
+// The engine under the plugins always draws something above the prompt; the mod must keep it.
 const engineRow = (on: On) => {
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
@@ -68,7 +69,7 @@ const engineRow = (on: On) => {
   })
 }
 
-// Замінник мода cache-meter: публікує його стан так, як це робить справжній.
+// A stand-in for the cache-meter mod: publishes its state the way the real one does.
 const fakeCacheMeter = {
   name: 'cache-meter',
   register: (on: On) => {
@@ -110,7 +111,7 @@ const measure = (tokens: number) => ({
 
 for (const surface of SURFACES) {
   describe(surface, () => {
-    test('нижче порогу: кнопка тиха, без підказки', async ($, on) => {
+    test('below the threshold: the button is dim, no hint', async ($, on) => {
       engineRow(on)
       on('session.measure', (_$, e) => ({ changed: e.changed }))
       await $.session.measure(measure(179_999))
@@ -122,7 +123,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ text: /час передавати/ })).toBeUndefined()
     })
 
-    test('з 180k: кнопка primary і підказка з числом', async ($, on) => {
+    test('from 180k: the button is primary and the hint has the number', async ($, on) => {
       engineRow(on)
       on('session.measure', (_$, e) => ({ changed: e.changed }))
       await $.session.measure(measure(180_000))
@@ -133,7 +134,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ text: /^ Контекст 180k, час передавати$/ })).toBeDefined()
     })
 
-    test('натискання запускає /handoff і ховає кнопку до кінця ходу', async ($, on) => {
+    test('a press runs /handoff and hides the button until the turn ends', async ($, on) => {
       engineRow(on)
       const runs: string[] = []
       on('command.run', (_$, e) => {
@@ -153,7 +154,7 @@ for (const surface of SURFACES) {
       [['handoff-relay:handoff'], 'handoff-relay:handoff'],
       [['handoff', 'handoff-relay:handoff'], 'handoff'],
     ] as const) {
-      test(`команди ${names.join(', ')}: кнопка запускає ${expected}`, async ($, on) => {
+      test(`commands ${names.join(', ')}: the button runs ${expected}`, async ($, on) => {
         engineRow(on)
         on('command.list', () => ({ value: names.map((name) => ({ name, description: '', source: 'skills' })) }) as never)
         const runs: string[] = []
@@ -167,7 +168,7 @@ for (const surface of SURFACES) {
       })
     }
 
-    test('під опитуванням смуга віддає місце', async ($, on) => {
+    test('under a survey the band gives way', async ($, on) => {
       on('ui.render', ($, e) => {
         const { Text } = $.ui.resolve(e)
         return <Text key="engine">опитування</Text>
@@ -179,7 +180,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ key: 'handoff' })).toBeUndefined()
       expect(await ui.find({ text: /опитування/ })).toBeDefined()
     })
-    test('картка в ході хендофу прибирає кнопку до кінця сесії', async ($, on) => {
+    test('a card in the handoff turn removes the button for the rest of the session', async ($, on) => {
       engineRow(on)
       on('command.run', () => ({ text: '' }))
       on('tool.call', { tool: SPAWN }, () => ({ result: 'created' }))
@@ -197,7 +198,7 @@ for (const surface of SURFACES) {
       expect(line?.props.flexDirection).toBe('row')
     })
 
-    test('/handoff, набраний вручну, теж передає фазу', async ($, on) => {
+    test('a /handoff typed by hand hands the phase over too', async ($, on) => {
       engineRow(on)
       on('command.run', () => ({ text: '' }))
       on('tool.call', { tool: SPAWN }, () => ({ result: 'created' }))
@@ -214,7 +215,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ text: /Handoff створено/ })).toBeDefined()
     })
 
-    test('картка поза хендофом кнопку не прибирає', async ($, on) => {
+    test('a card outside a handoff keeps the button', async ($, on) => {
       engineRow(on)
       on('tool.call', { tool: SPAWN }, () => ({ result: 'created' }))
       const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
@@ -224,7 +225,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ key: 'handoff' })).toBeDefined()
     })
 
-    test('картка після кінця ходу хендофу кнопку не прибирає', async ($, on) => {
+    test('a card after the handoff turn ended keeps the button', async ($, on) => {
       engineRow(on)
       on('command.run', () => ({ text: '' }))
       on('tool.call', { tool: SPAWN }, () => ({ result: 'created' }))
@@ -238,7 +239,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ key: 'handoff' })).toBeDefined()
     })
 
-    test('картка з помилкою: після ходу кнопка повертається', async ($, on) => {
+    test('a card with an error: the button comes back after the turn', async ($, on) => {
       engineRow(on)
       on('command.run', () => ({ text: '' }))
       on('tool.call', { tool: SPAWN }, () => ({ result: 'failed', isError: true }))
@@ -252,7 +253,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ key: 'handoff' })).toBeDefined()
       expect(await ui.find({ text: /Handoff створено/ })).toBeUndefined()
     })
-    test('вузька смуга: підказка про запуск іде другим рядком', async ($, on) => {
+    test('narrow band: the hint about the press goes on a second line', async ($, on) => {
       engineRow(on)
       on('command.run', () => ({ text: '' }))
       on('tool.call', { tool: SPAWN }, () => ({ result: 'created' }))
@@ -269,25 +270,25 @@ for (const surface of SURFACES) {
       expect(line?.props.flexDirection).toBe('column')
       expect(line?.text).toContain('Start locally')
     })
-    test('смуга лишає рядок рушія під кнопкою', async ($, on) => {
+    test('the band keeps the engine row below the button', async ($, on) => {
       engineRow(on)
       const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
 
       expect(await ui.find({ key: 'handoff' })).toBeDefined()
       expect(await ui.find({ text: /^engine row$/ })).toBeDefined()
-      // Рядки смуги розсунуто на пів рядка, не на цілий порожній
+      // The band's rows are half a line apart, not a whole empty one
       expect((await ui.find({ key: 'prompt-band' }))?.props.rowGap).toBe(0.5)
     })
 
     for (const order of [[fakeCacheMeterBand, fakeNextSteps], [fakeNextSteps, fakeCacheMeterBand]]) {
-      test(`спільна смуга: Handoff угорі, хоч би як завантажились сусіди (${order.map((p) => p.name).join(', ')})`, { plugins: order }, async ($, on) => {
+      test(`shared band: Handoff on top, whatever order the neighbours loaded in (${order.map((p) => p.name).join(', ')})`, { plugins: order }, async ($, on) => {
         engineRow(on)
         const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
         expect(await bandKeys(ui)).toEqual(BAND_ORDER)
       })
     }
 
-    test('cache-meter: великий кеш скоро охолоне — кнопка primary, підказка без суми', { plugins: [fakeCacheMeter] }, async ($, on) => {
+    test('cache-meter: big cache cooling soon — the button is primary, the hint has no amount', { plugins: [fakeCacheMeter] }, async ($, on) => {
       engineRow(on)
       on('session.measure', (_$, e) => ({ changed: e.changed }))
       await $.session.measure(measure(150_000))
@@ -296,11 +297,11 @@ for (const surface of SURFACES) {
 
       expect((await ui.find({ key: 'handoff' }))?.props.variant).toBe('primary')
       expect(await ui.find({ text: /^ Кеш скоро охолоне: передавати зараз дешевше$/ })).toBeDefined()
-      // Суму показує рядок cache-meter, тут вона була б третім повтором
+      // The cache-meter row shows the amount; here it would be the third repeat
       expect(await ui.find({ text: /\$/ })).toBeUndefined()
     })
 
-    test('cache-meter: великий кеш охолов — кнопка primary, підказка без обіцянки економії', { plugins: [fakeCacheMeter] }, async ($, on) => {
+    test('cache-meter: big cache gone cold — the button is primary, the hint promises no saving', { plugins: [fakeCacheMeter] }, async ($, on) => {
       engineRow(on)
       await setCache($ as never, { kind: 'cold', ctx: 160_000, isBig: true, rewriteUsd: 1.28, ttlMin: 60, model: 'opus-5-5' })
       const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
@@ -311,7 +312,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ text: /дешевше/ })).toBeUndefined()
     })
 
-    test('cache-meter: теплий кеш або малий контекст — кнопка тиха', { plugins: [fakeCacheMeter] }, async ($, on) => {
+    test('cache-meter: warm cache or small context — the button is dim', { plugins: [fakeCacheMeter] }, async ($, on) => {
       engineRow(on)
       await setCache($ as never, { kind: 'warm', ctx: 160_000, isBig: true, rewriteUsd: 1.28, ttlMin: 60, model: 'opus-5-5' })
       const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
@@ -325,7 +326,7 @@ for (const surface of SURFACES) {
 }
 
 for (const surface of SURFACES) {
-  test(`${surface}: language en — підказка англійською`, { options: { language: 'en' } }, async ($, on) => {
+  test(`${surface}: language en — hint in English`, { options: { language: 'en' } }, async ($, on) => {
     engineRow(on)
     on('session.measure', (_$, e) => ({ changed: e.changed }))
     await $.session.measure(measure(180_000))
@@ -333,7 +334,7 @@ for (const surface of SURFACES) {
     expect(await ui.find({ text: /^ Context 180k, time to hand off$/ })).toBeDefined()
   })
 
-  test(`${surface}: language auto без /config — англійська`, { options: { language: 'auto' } }, async ($, on) => {
+  test(`${surface}: language auto without /config — English`, { options: { language: 'auto' } }, async ($, on) => {
     engineRow(on)
     on('session.measure', (_$, e) => ({ changed: e.changed }))
     await $.session.measure(measure(180_000))
@@ -341,7 +342,7 @@ for (const surface of SURFACES) {
     expect(await ui.find({ text: /^ Context 180k, time to hand off$/ })).toBeDefined()
   })
 
-  test(`${surface}: language auto, у /config українська — українська`, { options: { language: 'auto' } }, async ($, on) => {
+  test(`${surface}: language auto, /config language Ukrainian — Ukrainian`, { options: { language: 'auto' } }, async ($, on) => {
     engineRow(on)
     ukrainianConfig(on)
     on('session.measure', (_$, e) => ({ changed: e.changed }))
@@ -351,7 +352,7 @@ for (const surface of SURFACES) {
   })
 }
 
-kitTest('переклади: в en і uk однаковий набір ключів', async () => {
+kitTest('translations: en and uk have the same set of keys', async () => {
   expect(Object.keys(uk).sort()).toEqual(Object.keys(en).sort())
 })
 

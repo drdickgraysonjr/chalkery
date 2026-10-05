@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
 """Handoff chain phase, from the session title or from explicit --chain/--phase.
 
 Prints JSON: base, phase (the current N), next_phase, card_title (at most 60
