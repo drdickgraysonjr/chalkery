@@ -83,23 +83,43 @@ const peek = {
   },
 }
 
+type Limit = { kind: string; percentUsed: number }
+// A subscription reports five_hour and seven_day plan limits; the API reports none
+const SUBSCRIPTION: Limit[] = [{ kind: 'five_hour', percentUsed: 10 }, { kind: 'seven_day', percentUsed: 5 }]
+const API: Limit[] = []
+
 type World = {
   commands?: string[]
   answer?: string
+  // Plan limits the engine reports after each answer; a subscription unless given
+  limits?: Limit[]
+  model?: string
+  // What the mod's $.store holds at the start
+  stored?: Record<string, unknown>
 }
 
 // Everything beneath the plugins a session would answer
 function world($: unknown, on: On, w: World = {}) {
   const clk = mock.clock(on, { now: 10 * 60 * MIN })
-  mock.store(on)
+  // The mod's $.store, in memory and open to the test
+  const store: Record<string, unknown> = { ...w.stored }
+  on('store.get', (_$, e) => ({ value: store[e.key] }) as never)
+  on('store.set', (_$, e) => {
+    store[e.key] = e.value
+    return { value: undefined } as never
+  })
   const asked: { question: string; options: readonly string[] }[] = []
   const runs: string[] = []
   const forks: number[] = []
   const toasts: string[] = []
+  const model = w.model ?? MODEL
+  let limits = w.limits ?? SUBSCRIPTION
   let cacheRead = 200_000
   let cacheWrite = 0
   on('session.start', () => ({ cwd: '/x' }))
-  on('session.model', () => ({ value: MODEL }))
+  on('session.model', () => ({ value: model }))
+  on('session.usage', () => ({ value: { startedAt: 0, context: { window: 1_000_000 }, rateLimits: limits, cost: { usd: 3.2 } } }) as never)
+  on('turn.complete', () => ({ text: '' }))
   on('command.register', () => ({ value: {} }) as never)
   on('command.list', () => ({ value: (w.commands ?? []).map((name) => ({ name, description: '', source: 'skills' })) }) as never)
   on('command.run', (_$, e) => {
@@ -120,7 +140,11 @@ function world($: unknown, on: On, w: World = {}) {
   })
   on('session.compact', () => ({}) as never)
   on('prompt.submit', (_$, e) => ({ text: e.text }))
+  // The engine's own row; for the footer, the mode labels it was handed
+  on('ui.render', { component: 'SessionMode' }, ($$, e) =>
+    $$.ui.resolve(e).Text({ key: 'modes', children: [((e.props as { modes?: string[] }).modes ?? []).join(' | ')] }))
   on('ui.render', ($$, e) => $$.ui.resolve(e).Text({ key: 'engine', children: ['engine row'] }))
+  on('classic.PostModelSwitch', () => ({}) as never)
   on('turn.step', async function* (_$, e) {
     return {
       turnId: e.turnId,
@@ -128,7 +152,7 @@ function world($: unknown, on: On, w: World = {}) {
       answer: '',
       toolUses: [],
       stopReason: 'end_turn',
-      usage: { input_tokens: 10, output_tokens: 10, cache_read_input_tokens: cacheRead, cache_creation_input_tokens: cacheWrite, model: MODEL },
+      usage: { input_tokens: 10, output_tokens: 10, cache_read_input_tokens: cacheRead, cache_creation_input_tokens: cacheWrite, model },
     } as never
   })
   on('model.fork', () => {
@@ -141,11 +165,15 @@ function world($: unknown, on: On, w: World = {}) {
     runs,
     forks,
     toasts,
+    store,
     setRead: (n: number) => {
       cacheRead = n
     },
     setWrite: (n: number) => {
       cacheWrite = n
+    },
+    setLimits: (l: Limit[]) => {
+      limits = l
     },
   }
 }
@@ -154,12 +182,17 @@ async function start($: any) {
   await $.session.start({ cwd: '/x', surface: 'terminal', isInteractive: true })
 }
 
-// One main-loop request that reads the cache
+// One main-loop request that reads the cache, and the end of its turn
 async function step($: any) {
   const s = $.turn.step({ turnId: 't', index: 0, model: MODEL, messageCount: 1 })
   let x = await s.next()
   while (!x.done) x = await s.next()
+  await $.turn.complete({ answer: '', durationMs: 1, isAborted: false, turnId: 't', reason: 'answer' })
   return x.value
+}
+
+async function cache($: any, args = '') {
+  return ((await $.command.run({ command: 'cache', args, ...typed })) as { text: string }).text
 }
 
 async function state($: any) {
@@ -182,13 +215,13 @@ for (const surface of SURFACES) {
       // Усі частини, кнопку теж, розділяє та сама сіра паличка; зелена лише крапка; з великої
       const band = await ui.find({ key: 'cache-meter' })
       expect(band?.props.columnGap).toBe(1)
-      expect(band?.text).toContain('● Кеш теплий ще 60 хв│Перекешування коштуватиме ≈ $1.60│')
+      expect(band?.text).toContain('● Кеш теплий ще 60 хв│Перекешування коштуватиме ≈ 200k ток.│')
       const bars = await ui.findAll({ text: /^│$/ })
       expect(bars).toHaveLength(2)
       for (const bar of bars) expect(bar.props.dimColor).toBe(true)
       expect((await ui.find({ text: /^●$/ }))?.props.color).toBe('green')
       expect((await ui.find({ text: /^ Кеш теплий ще 60 хв$/ }))?.props.dimColor).toBe(true)
-      expect(await ui.find({ text: /^Перекешування коштуватиме ≈ \$1\.60$/ })).toBeDefined()
+      expect(await ui.find({ text: /^Перекешування коштуватиме ≈ 200k ток\.$/ })).toBeDefined()
       // Тримати теплим видно завжди, поки кеш теплий; тихо, бо час ще є. Справжня кнопка, як Handoff:
       // без plain, а літера лише в терміналі (десктоп малює її фішкою перед підписом)
       const keep = await ui.find({ key: 'keepwarm' })
@@ -231,7 +264,7 @@ for (const surface of SURFACES) {
       const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
 
       const text = (await ui.find({ key: 'cache-meter' }))?.text ?? ''
-      expect(text).toContain('● Кеш теплий ще 60 хв│Перекешування коштуватиме ≈ $0.86')
+      expect(text).toContain('● Кеш теплий ще 60 хв│Перекешування коштуватиме ≈ 108k ток.')
       expect(text).not.toContain('контекст')
       expect(text).not.toContain('сесія')
       expect(text).not.toContain('Ліміти')
@@ -288,7 +321,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ text: /^○ Кеш охолов 1 хв тому$/ })).toBeDefined()
       // Охололий кеш тримати вже нічого
       expect(await ui.find({ key: 'keepwarm' })).toBeUndefined()
-      const rewrite = await ui.find({ text: /^Наступне повідомлення перекешує ≈ \$1\.60$/ })
+      const rewrite = await ui.find({ text: /^Наступне повідомлення перекешує ≈ 200k ток\.$/ })
       expect(rewrite).toBeDefined()
       expect(rewrite?.props.color).toBe('red')
     })
@@ -304,7 +337,7 @@ for (const surface of SURFACES) {
       expect(w.forks.length).toBe(1)
       const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
 
-      expect(await ui.find({ text: /^◆ Тримаю кеш теплим до \d{1,2}:\d\d, 1 пінг \$0\.0\d$/ })).toBeDefined()
+      expect(await ui.find({ text: /^◆ Тримаю кеш теплим до \d{1,2}:\d\d, 1 пінг 200k ток\.$/ })).toBeDefined()
       const keep = await ui.find({ key: 'keepwarm' })
       expect(keep?.props.label).toBe('Не тримати')
       // Цифри лишаються за пропозиціями next-steps; на десктопі літери немає
@@ -318,7 +351,7 @@ test('стан для інших модів: warm → cold, ціна перез�
   await start($)
   expect((await state($)).kind).toBe('unknown')
   await step($)
-  expect(await state($)).toEqual({ kind: 'warm', ctx: 200_010, isBig: true, rewriteUsd: 1.6, ttlMin: 60, model: 'opus-5-5' })
+  expect(await state($)).toEqual({ kind: 'warm', ctx: 200_010, isBig: true, rewriteUsd: 1.6, ttlMin: 60, model: 'opus-5-5', rewriteTokens: 200_010, unit: 'tokens' })
   await w.clk.advance(56 * MIN)
   expect((await state($)).kind).toBe('cooling')
   await w.clk.advance(5 * MIN)
@@ -411,8 +444,8 @@ for (const surface of SURFACES) {
     await w.clk.advance(53 * MIN)
     expect(w.forks.length).toBe(2)
     const kept = (await $.command.run({ command: 'cache', ...typed })) as { text: string }
-    expect(kept.text).toContain('поки що 2 пінги на $')
-    expect(kept.text).toContain('кеш живе 60 хв (типово)')
+    expect(kept.text).toMatch(/поки що 2 пінги, ≈ 400k ток\. \(API-еквівалент \$0\.\d\d\)/)
+    expect(kept.text).toContain('кеш живе 60 хв (підписка)')
 
     await $.command.run({ command: 'keepwarm', args: 'off', ...typed })
     await w.clk.advance(125 * MIN)
@@ -424,7 +457,7 @@ for (const surface of SURFACES) {
     w.setWrite(200_000)
     await step($)
     const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
-    expect(await ui.find({ text: /^Перекешовано 1 раз: \$1\.60$/ })).toBeDefined()
+    expect(await ui.find({ text: /^Перекешовано 1 раз: 200k ток\.$/ })).toBeDefined()
   })
 }
 
@@ -436,7 +469,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     await step($)
     const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
     expect(await ui.find({ text: /^ Cache warm for 60 min$/ })).toBeDefined()
-    expect(await ui.find({ text: /^Re-caching would cost ≈ \$1\.60$/ })).toBeDefined()
+    expect(await ui.find({ text: /^Re-caching would cost ≈ 200k tok$/ })).toBeDefined()
     expect((await ui.find({ key: 'keepwarm' }))?.props.label).toBe('Keep warm')
     expect(await ui.find({ text: /Кеш/ })).toBeUndefined()
   })
@@ -458,6 +491,188 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect((await ui.find({ key: 'keepwarm' }))?.props.label).toBe('Тримати теплим')
   })
 }
+
+// The cache lifetime: from the plan, then from measurement and the engine; /cache ttl for one session
+test('ttl: a subscription (five_hour limits) keeps 60 min', { plugins: [peek] }, async ($, on) => {
+  const w = world($, on)
+  await start($)
+  // Before the first answer nothing is known yet
+  expect(await cache($)).toContain('кеш живе 60 хв (типово)')
+  await step($)
+  expect(await cache($)).toContain('кеш живе 60 хв (підписка)')
+  await w.clk.advance(30 * MIN)
+  expect((await state($)).kind).toBe('warm')
+})
+
+test('ttl: no plan limits after the first answer means the API: 5 min', { plugins: [peek] }, async ($, on) => {
+  const w = world($, on, { limits: API })
+  await start($)
+  await step($)
+  expect(await cache($)).toContain('кеш живе 5 хв (API)')
+  expect((await state($)).ttlMin).toBe(5)
+  await w.clk.advance(6 * MIN)
+  expect((await state($)).kind).toBe('cold')
+})
+
+test('ttl: a gateway spend limit alone is not a subscription', async ($, on) => {
+  world($, on, { limits: [{ kind: 'spend_limit', percentUsed: 20 }] })
+  await start($)
+  await step($)
+  expect(await cache($)).toContain('кеш живе 5 хв (API)')
+})
+
+test("ttl: the engine's cache_ttl from a model switch wins over the plan", async ($, on) => {
+  world($, on)
+  await start($)
+  await step($)
+  await $.classic.PostModelSwitch({
+    from_model: MODEL, to_model: MODEL, requested_model: 'opus', source: 'command', context_tokens: 200_010,
+    prompt_cache_warm: true, cache_ttl: '5m', estimated_cache_write_usd: 1.25, pricing: 'catalog',
+  } as never)
+  expect(await cache($)).toContain('кеш живе 5 хв (від рушія)')
+  // A later answer with plan limits does not undo what the engine said
+  await step($)
+  expect(await cache($)).toContain('кеш живе 5 хв (від рушія)')
+})
+
+test('ttl: /cache ttl lasts for the session only and an old saved ttl is ignored', async ($, on) => {
+  // What 0.2.0 saved: a ttl that held for every later session
+  const w = world($, on, { stored: { settings: { bigTokens: 300000, guard: true, ttlMin: 5, alerts: true, keepWarmHours: 4 } } })
+  await start($)
+  await step($)
+  expect(await cache($)).toContain('кеш живе 60 хв (підписка)')
+  expect(w.store.settings).toEqual({ bigTokens: 300000, guard: true, alerts: true, keepWarmHours: 4 })
+  expect(await cache($, 'ttl 5')).toContain('кеш живе 5 хв (задано вручну на цю сесію)')
+  expect(w.store.settings).not.toHaveProperty('ttlMin')
+  expect(await cache($, 'ttl auto')).toContain('кеш живе 60 хв (підписка)')
+})
+
+test('ttl: /cache names where the lifetime came from', async ($, on) => {
+  const w = world($, on, { limits: API })
+  await start($)
+  await step($)
+  expect(await cache($)).toContain('(API)')
+  // A cache hit after more than 5 idle minutes proves the 1-hour TTL
+  await w.clk.advance(10 * MIN)
+  await step($)
+  expect(await cache($)).toContain('кеш живе 60 хв (виміряно)')
+})
+
+// Amounts: tokens on a subscription or for a model without prices; dollars on the API
+for (const surface of SURFACES) {
+  test(`units: on a subscription the band, footer and toasts show tokens, not dollars (${surface})`, async ($, on) => {
+    const w = world($, on)
+    await start($)
+    await step($)
+    const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
+    const band = (await ui.find({ key: 'cache-meter' }))?.text ?? ''
+    expect(band).toContain('Перекешування коштуватиме ≈ 200k ток.')
+    expect(band).not.toContain('$')
+    // The cooling toast
+    await w.clk.advance(56 * MIN)
+    const cooling = w.toasts.find((t) => t.startsWith('Кеш на 200k токенів охолоне'))
+    expect(cooling).toContain('Перекешування коштуватиме ≈ 200k ток.')
+    // The footer once the big cache is cold
+    await w.clk.advance(5 * MIN)
+    const footer = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'SessionMode', props: { modes: [] } as never })
+    expect(await footer.find({ text: /^кеш охолов, перекешування коштуватиме ≈ 200k ток\.$/ })).toBeDefined()
+    expect(w.toasts.join('\n')).not.toContain('$')
+  })
+}
+
+test('units: on the API the band shows dollars', async ($, on) => {
+  world($, on, { limits: API })
+  await start($)
+  await step($)
+  const ui = await $.ui.mount({ plugin: 'cache-meter', surface: 'terminal', component: 'AbovePrompt', props })
+  // The API's 5-minute cache writes at 1.25x input: 200k tokens of Opus 5.5 ≈ $1.00
+  expect((await ui.find({ key: 'cache-meter' }))?.text).toContain('Перекешування коштуватиме ≈ $1.00')
+})
+
+test('units: an unpriced model shows tokens and no dollars, even in /cache', { plugins: [peek] }, async ($, on) => {
+  world($, on, { limits: API, model: 'claude-opus-6' })
+  await start($)
+  await step($)
+  const ui = await $.ui.mount({ plugin: 'cache-meter', surface: 'terminal', component: 'AbovePrompt', props })
+  const band = (await ui.find({ key: 'cache-meter' }))?.text ?? ''
+  expect(band).toContain('Перекешування коштуватиме ≈ 200k ток.')
+  const text = await cache($)
+  expect(text).toContain('модель opus-6, ціни невідомі')
+  expect(text).not.toContain('$')
+  expect((await state($)).unit).toBe('tokens')
+})
+
+test('units: /cache on a subscription labels dollars as the API equivalent', async ($, on) => {
+  const w = world($, on)
+  await start($)
+  await step($)
+  await w.clk.advance(61 * MIN)
+  const text = await cache($)
+  expect(text).toMatch(/перекешує його: ≈ 200k ток\. \(API-еквівалент \$1\.60\)/)
+  expect(text).toContain('Вартість сесії поки: API-еквівалент $3.20')
+  expect(text.split('\n').filter((l) => l.includes('$') && !l.includes('API-еквівалент'))).toEqual([])
+})
+
+test('units: the cold-send question on a subscription has no dollars', async ($, on) => {
+  const w = world($, on, { commands: ['handoff'], answer: 'Запустити /handoff' })
+  await start($)
+  await step($)
+  await w.clk.advance(61 * MIN)
+  const r = (await submit($)) as { drop?: string }
+  expect(w.asked[0].question).toBe('Кеш охолов 1 хв тому. Якщо надіслати зараз, 200k токенів контексту запишуться в кеш заново. Що робимо?')
+  expect(r.drop).toContain('перекешує контекст (≈ 200k ток.)')
+})
+
+// Keep warm: what it will use, said up front; it stops before the plan limits run out
+test('keep warm: the start toast estimates pings and what each reads', async ($, on) => {
+  const w = world($, on)
+  await start($)
+  await step($)
+  await $.command.run({ command: 'keepwarm', ...typed })
+  // 4 hours at one ping every 52 minutes
+  expect(w.toasts.at(-1)).toMatch(/^Тримаю кеш теплим до \d{1,2}:\d\d: ≈ 4 пінги, кожен читає ≈ 200k ток\.$/)
+  // Half an hour ends before the first ping is due: no estimate of pings that never go out
+  await $.command.run({ command: 'keepwarm', args: 'off', ...typed })
+  await $.command.run({ command: 'keepwarm', args: '0.5', ...typed })
+  expect(w.toasts.at(-1)).toMatch(/^Тримаю кеш теплим до \d{1,2}:\d\d: стільки він протримається й без пінгу\.$/)
+})
+
+test('keep warm: stops when a plan limit reaches 90%', async ($, on) => {
+  const w = world($, on)
+  on('session.measure', (_$, e) => ({ changed: e.changed }))
+  await start($)
+  await step($)
+  await $.command.run({ command: 'keepwarm', ...typed })
+  await w.clk.advance(53 * MIN)
+  expect(w.forks.length).toBe(1)
+  await $.session.measure({ context: { tokens: 200_010, window: 1_000_000 }, rateLimits: [{ kind: 'five_hour', percentUsed: 91 }], changed: ['rateLimits'] } as never)
+  await w.clk.advance(1 * MIN)
+  expect(w.toasts.at(-1)).toBe('Більше не тримаю кеш теплим: ліміт плану дійшов до 90% (5 год 91%). Було 1 пінг на 200k ток.')
+  await w.clk.advance(60 * MIN)
+  expect(w.forks.length).toBe(1)
+})
+
+test('keep warm: does not start at 90% of a plan limit', async ($, on) => {
+  const w = world($, on, { limits: [{ kind: 'five_hour', percentUsed: 92 }, { kind: 'seven_day', percentUsed: 40 }] })
+  await start($)
+  await step($)
+  await $.command.run({ command: 'keepwarm', ...typed })
+  expect(w.toasts.at(-1)).toContain('Не тримаю кеш теплим: ліміт плану вже від 90% (5 год 92%)')
+  await w.clk.advance(60 * MIN)
+  expect(w.forks.length).toBe(0)
+})
+
+// Other mods read cache-meter.cache: a new version only adds to it
+test('state for other mods: old fields stay, unit and rewrite tokens added', { plugins: [peek] }, async ($, on) => {
+  world($, on, { limits: API })
+  await start($)
+  await step($)
+  const value = await state($)
+  for (const [field, type] of Object.entries({ kind: 'string', ctx: 'number', isBig: 'boolean', rewriteUsd: 'number', ttlMin: 'number', model: 'string' })) {
+    expect(typeof value[field]).toBe(type)
+  }
+  expect(value).toMatchObject({ kind: 'warm', ctx: 200_010, isBig: true, rewriteUsd: 1, ttlMin: 5, model: 'opus-5-5', rewriteTokens: 200_010, unit: 'usd' })
+})
 
 kitTest('переклади: в en і uk однаковий набір ключів', async () => {
   const keys = (o: object): string[] =>

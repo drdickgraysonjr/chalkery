@@ -283,6 +283,20 @@ for (const surface of SURFACES) {
       expect(await ui.find({ text: /кеш/ })).toBeUndefined()
     })
 
+    test('cold price from cache-meter: tokens on a subscription, dollars on the API', { plugins: [fakeCacheMeter] }, async ($, on) => {
+      engine(on)
+      await $.turn.complete(turnEnd)
+      const cold = { kind: 'cold', isBig: true, rewriteUsd: 1.6, rewriteTokens: 200_010 }
+      await $.command.run({ command: 'set-cache', args: JSON.stringify({ ...cold, unit: 'tokens' }), ...typed } as never)
+      const subscription = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
+      expect(await subscription.find({ text: /^ ≈ 200k ток\.$/ })).toBeDefined()
+      expect(await subscription.find({ text: /\$/ })).toBeUndefined()
+
+      await $.command.run({ command: 'set-cache', args: JSON.stringify({ ...cold, unit: 'usd' }), ...typed } as never)
+      const api = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
+      expect(await api.find({ text: /^ ≈ \$1\.60$/ })).toBeDefined()
+    })
+
     test('кеш теплий: підказки немає', { plugins: [fakeCacheMeter] }, async ($, on) => {
       engine(on)
       await $.turn.complete(turnEnd)
