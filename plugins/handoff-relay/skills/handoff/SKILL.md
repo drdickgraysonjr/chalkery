@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Compacts the current conversation into a handoff document for another agent to pick up; use when the context is getting long, a phase of a multi-session chain ends, or the user presses the Handoff button or asks for a handoff.
+description: Compacts the current conversation into a handoff document for another agent to pick up; use when the context is getting long, a phase of a multi-session chain ends, or the user presses the Handoff button or asks for a handoff. If the session also has a standalone `handoff` skill, use that one instead.
 argument-hint: "What will the next session be used for?"
 ---
 
