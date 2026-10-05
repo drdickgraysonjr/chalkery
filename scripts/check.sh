@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: MIT
 # Runs every check CI runs, with the claude on PATH. Each check runs even when an
 # earlier one failed; the summary at the end lists the failures.
 cd "$(dirname "$0")/.."

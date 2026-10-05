@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 export type Tokens = number | null
 
 // The phase handed off: the card's title, or the document's name when no card was made.

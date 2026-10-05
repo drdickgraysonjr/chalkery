@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Modified by Yehor Hunia, 2026, from anthropics/claude-plugins-community@87c843d (next-steps).
 // Everything next-steps shows a person, in English. Same keys as uk.mjs.
 
 export default {

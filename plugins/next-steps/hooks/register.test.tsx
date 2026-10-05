@@ -1,9 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
+// Modified by Yehor Hunia, 2026, from anthropics/claude-plugins-community@87c843d (next-steps).
 import { describe, expect, test as kitTest } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import en from './locales/en.mjs'
 import uk from './locales/uk.mjs'
 
-// Тести нижче писано під українські написи: мова мода тут uk, якщо тест не задав іншу
+// The tests below are written against the Ukrainian text: the mod's language here is uk unless a test sets another
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const test = (name: string, ...rest: any[]) =>
   rest.length === 1
@@ -13,12 +15,12 @@ const test = (name: string, ...rest: any[]) =>
 const ukrainianConfig = (on: On) =>
   on('config.list', () => ({ value: [{ key: 'language', label: 'Language', kind: 'text', value: 'українська', provider: { kind: 'engine' }, isLocked: false }] }) as never)
 
-// Сусідні моди репо: кожен вкладає свій рядок у спільну смугу так само, як справжній.
+// The repo's neighbouring mods: each puts its row into the shared band the same way the real one does.
 const fakeHandoffRelay = {
   name: 'handoff-relay',
   register: (on: On) => {
     on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-      // Плагін тесту живе в окремому середовищі без імпортів, тож злиття смуги тут своє, за тим самим договором
+      // A test plugin lives in its own environment without imports, so it merges the band itself, by the same contract
       const below = (await next(e)) as { type?: string; props?: { key?: string }; children?: unknown[] } | null
       const { Box, Text } = $.ui.resolve(e)
       const place = (row: { props?: { key?: string } }) => Number(String(row.props?.key ?? '').split(':')[1] ?? 999)
@@ -35,7 +37,7 @@ const fakeCacheMeterBand = {
   name: 'cache-meter',
   register: (on: On) => {
     on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-      // Плагін тесту живе в окремому середовищі без імпортів, тож злиття смуги тут своє, за тим самим договором
+      // A test plugin lives in its own environment without imports, so it merges the band itself, by the same contract
       const below = (await next(e)) as { type?: string; props?: { key?: string }; children?: unknown[] } | null
       const { Box, Text } = $.ui.resolve(e)
       const place = (row: { props?: { key?: string } }) => Number(String(row.props?.key ?? '').split(':')[1] ?? 999)
@@ -60,7 +62,7 @@ const bandKeys = async (ui: { drawn: () => Promise<unknown> }) => {
   return (tree.children ?? []).map((row) => row.props?.key)
 }
 
-// Рушій під плагінами завжди щось малює над полем вводу; мод має це лишити.
+// The engine under the plugins always draws something above the prompt; the mod must keep it.
 const engineRow = (on: On) => {
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
@@ -68,7 +70,7 @@ const engineRow = (on: On) => {
   })
 }
 
-// Замінник мода cache-meter: публікує його стан так, як це робить справжній.
+// A stand-in for the cache-meter mod: publishes its state the way the real one does.
 const fakeCacheMeter = {
   name: 'cache-meter',
   register: (on: On) => {
@@ -104,7 +106,7 @@ const REPLY = JSON.stringify([
   { label: 'Вигаданий скіл', prompt: '/nope зроби щось' },
 ])
 
-// Рушій під модом: fork рахуємо й відповідаємо заданим текстом; поле вводу записуємо.
+// The engine under the mod: count forks and answer with the given text; record the prompt box.
 const engine = (on: On, reply: string | null = REPLY) => {
   const forks: string[] = []
   const filled: string[] = []
@@ -142,7 +144,7 @@ const engine = (on: On, reply: string | null = REPLY) => {
 
 for (const surface of SURFACES) {
   describe(surface, () => {
-    test('до першої відповіді смуги немає', async ($, on) => {
+    test('no band before the first reply', async ($, on) => {
       engine(on)
       const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
 
@@ -150,7 +152,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ text: /engine row/ })).toBeDefined()
     })
 
-    test('після відповіді лише кнопка, модель не питали', async ($, on) => {
+    test('after a reply only the button, the model was not asked', async ($, on) => {
       const w = engine(on)
       await $.turn.complete(turnEnd)
       const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
@@ -162,17 +164,17 @@ for (const surface of SURFACES) {
     })
 
     for (const order of [[fakeHandoffRelay, fakeCacheMeterBand], [fakeCacheMeterBand, fakeHandoffRelay]]) {
-      test(`спільна смуга: «Що далі?» під кешем, хоч би як завантажились сусіди (${order.map((p) => p.name).join(', ')})`, { plugins: order }, async ($, on) => {
+      test(`shared band: "What next?" below the cache, whatever order the neighbours loaded in (${order.map((p) => p.name).join(', ')})`, { plugins: order }, async ($, on) => {
         engine(on)
         await $.turn.complete(turnEnd)
         const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
         expect(await bandKeys(ui)).toEqual(BAND_ORDER)
-        // Рядки смуги розсунуто на пів рядка, не на цілий порожній
+        // The band's rows are half a line apart, not a whole empty one
         expect((await ui.find({ key: 'prompt-band' }))?.props.rowGap).toBe(0.5)
       })
     }
 
-    test('коротка відповідь кнопки не дає', async ($, on) => {
+    test('a short reply gives no button', async ($, on) => {
       engine(on)
       await $.turn.complete({ ...turnEnd, answer: 'Готово.' })
       const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
@@ -180,7 +182,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ key: 'ask' })).toBeUndefined()
     })
 
-    test('хід субагента кнопки не дає', async ($, on) => {
+    test('a subagent turn gives no button', async ($, on) => {
       engine(on)
       await $.turn.complete({ ...turnEnd, agentId: 'a1' })
       const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
@@ -188,7 +190,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ key: 'ask' })).toBeUndefined()
     })
 
-    test('натискання: один fork, пропозиції без вигаданого скіла, перша сірим у полі', async ($, on) => {
+    test('a press: one fork, suggestions without a made-up skill, the first one dim in the box', async ($, on) => {
       const w = engine(on)
       await $.turn.complete(turnEnd)
       const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
@@ -202,7 +204,7 @@ for (const surface of SURFACES) {
       expect(w.suggested).toEqual(['Опублікуй сторінку зараз'])
     })
 
-    test('пропозиція йде в поле чернеткою, смуга ховається', async ($, on) => {
+    test('a suggestion goes into the box as a draft, the band hides', async ($, on) => {
       const w = engine(on)
       await $.turn.complete(turnEnd)
       const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
@@ -214,7 +216,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ key: 'ask' })).toBeUndefined()
     })
 
-    test('«сховати» повертає кнопку, нового fork немає', async ($, on) => {
+    test('hide brings the button back, no new fork', async ($, on) => {
       const w = engine(on)
       await $.turn.complete(turnEnd)
       const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
@@ -226,7 +228,7 @@ for (const surface of SURFACES) {
       expect(w.forks.length).toBe(1)
     })
 
-    test('повторне натискання «Що далі?» згортає список без нового fork', async ($, on) => {
+    test('pressing "What next?" again collapses the list without a new fork', async ($, on) => {
       const w = engine(on)
       await $.turn.complete(turnEnd)
       const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
@@ -239,7 +241,7 @@ for (const surface of SURFACES) {
       expect(w.forks.length).toBe(1)
     })
 
-    test('новий хід ховає пропозиції', async ($, on) => {
+    test('a new turn hides the suggestions', async ($, on) => {
       engine(on)
       await $.turn.complete(turnEnd)
       const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
@@ -250,7 +252,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ key: 'ask' })).toBeUndefined()
     })
 
-    test('порожня відповідь моделі: тост і кнопка лишається', async ($, on) => {
+    test('an empty model reply: a toast, and the button stays', async ($, on) => {
       const w = engine(on, null)
       await $.turn.complete(turnEnd)
       const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
@@ -260,7 +262,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ key: 'ask' })).toBeDefined()
     })
 
-    test('поки модель працює, смуги немає', async ($, on) => {
+    test('no band while the model is working', async ($, on) => {
       engine(on)
       await $.turn.complete(turnEnd)
       const ui = await $.ui.mount({
@@ -270,7 +272,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ key: 'ask' })).toBeUndefined()
     })
 
-    test('кеш охолов: біля кнопки лише ціна натискання', { plugins: [fakeCacheMeter] }, async ($, on) => {
+    test('cache gone cold: only the cost of the press next to the button', { plugins: [fakeCacheMeter] }, async ($, on) => {
       engine(on)
       await $.turn.complete(turnEnd)
       await $.command.run({
@@ -279,7 +281,7 @@ for (const surface of SURFACES) {
       const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
 
       expect(await ui.find({ text: /^ ≈ \$1\.20$/ })).toBeDefined()
-      // Пояснення про кеш — у рядку cache-meter, тут його нема
+      // The cache explanation is in the cache-meter row, not here
       expect(await ui.find({ text: /кеш/ })).toBeUndefined()
     })
 
@@ -297,7 +299,7 @@ for (const surface of SURFACES) {
       expect(await api.find({ text: /^ ≈ \$1\.60$/ })).toBeDefined()
     })
 
-    test('кеш теплий: підказки немає', { plugins: [fakeCacheMeter] }, async ($, on) => {
+    test('cache warm: no hint', { plugins: [fakeCacheMeter] }, async ($, on) => {
       engine(on)
       await $.turn.complete(turnEnd)
       await $.command.run({
@@ -309,7 +311,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ text: /\$/ })).toBeUndefined()
     })
 
-    test('широка смуга: пропозиції й «сховати» в одному рядку із заголовком', async ($, on) => {
+    test('wide band: suggestions and hide on one line with the heading', async ($, on) => {
       engine(on)
       await $.turn.complete(turnEnd)
       const ui = await $.ui.mount({
@@ -322,12 +324,12 @@ for (const surface of SURFACES) {
       expect(offer?.props.columnGap).toBe(3)
       expect(offer?.text).toContain('Що далі?')
       expect(offer?.text).toContain('Сховати')
-      // Заголовок — та сама кнопка, не підпис
+      // The heading is the same button, not a label
       expect((await ui.find({ key: 'ask' }))?.props.label).toBe('Що далі?')
       expect(await ui.find({ key: 'next-steps-head' })).toBeUndefined()
     })
 
-    test('вузька смуга: заголовок із «сховати», пункти під ним без відступу', async ($, on) => {
+    test('narrow band: a heading with hide, the items below it without indent', async ($, on) => {
       engine(on)
       await $.turn.complete(turnEnd)
       const ui = await $.ui.mount({
@@ -345,21 +347,21 @@ for (const surface of SURFACES) {
 }
 
 for (const surface of SURFACES) {
-  test(`${surface}: language en — кнопка англійською`, { options: { language: 'en' } }, async ($, on) => {
+  test(`${surface}: language en — button in English`, { options: { language: 'en' } }, async ($, on) => {
     engine(on)
     await $.turn.complete(turnEnd)
     const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
     expect((await ui.find({ key: 'ask' }))?.props.label).toBe('What next?')
   })
 
-  test(`${surface}: language auto без /config — англійська`, { options: { language: 'auto' } }, async ($, on) => {
+  test(`${surface}: language auto without /config — English`, { options: { language: 'auto' } }, async ($, on) => {
     engine(on)
     await $.turn.complete(turnEnd)
     const ui = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
     expect((await ui.find({ key: 'ask' }))?.props.label).toBe('What next?')
   })
 
-  test(`${surface}: language auto, у /config українська — українська`, { options: { language: 'auto' } }, async ($, on) => {
+  test(`${surface}: language auto, /config language Ukrainian — Ukrainian`, { options: { language: 'auto' } }, async ($, on) => {
     engine(on)
     ukrainianConfig(on)
     await $.turn.complete(turnEnd)
@@ -368,7 +370,7 @@ for (const surface of SURFACES) {
   })
 }
 
-kitTest('переклади: в en і uk однаковий набір ключів', async () => {
+kitTest('translations: en and uk have the same set of keys', async () => {
   const keys = (o: object): string[] =>
     Object.entries(o).flatMap(([k, v]) => (v && typeof v === 'object' ? keys(v).map((n) => `${k}.${n}`) : [k])).sort()
   expect(keys(uk)).toEqual(keys(en))

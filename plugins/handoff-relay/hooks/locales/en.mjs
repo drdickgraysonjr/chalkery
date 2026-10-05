@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Everything handoff-relay shows a person, in English. Same keys as uk.mjs.
 
 export default {

@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0. Modified by Yehor Hunia, 2026, from anthropics/claude-plugins-community@87c843d (next-steps). -->
 # next-steps (on demand)
 
 English | [Українська](README.uk.md)

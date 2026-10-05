@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // Усе, що handoff-relay показує людині, українською. Ключі ті самі, що в en.mjs.
 
 export default {

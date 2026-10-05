@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 // What cache-meter publishes for other mods to read. A reader must work
 // without it: when cache-meter is not installed, the value is absent.
 // Fields are only ever added; a reader written for an older version keeps working.

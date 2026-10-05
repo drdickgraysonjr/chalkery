@@ -4,7 +4,11 @@ Claude Code mods built on function hooks that draw a band above the prompt, plus
 
 ## Language
 
-This repository is public, so commit messages and code comments are in English. Some older comments are still in Ukrainian; do not add new ones. Text a person sees lives in `hooks/locales/en.mjs` and `uk.mjs`, and every README comes in a pair, `README.md` and `README.uk.md`, which change together.
+This repository is public, so commit messages and code comments are in English. The only Ukrainian comments left are in the `locales/uk.mjs` files; do not add new ones elsewhere. Text a person sees lives in `hooks/locales/en.mjs` and `uk.mjs`, and every README comes in a pair, `README.md` and `README.uk.md`, which change together.
+
+## Licences
+
+Every code file starts with an `SPDX-License-Identifier` comment, after a shebang or JSX pragmas. Files of `next-steps` are Apache-2.0 and also carry the line `Modified by Yehor Hunia, 2026, from anthropics/claude-plugins-community@87c843d (next-steps).`, as Apache-2.0 section 4(b) requires; its copies of the shared files stay MIT. Everything else is MIT.
 
 ## Before a pull request
 

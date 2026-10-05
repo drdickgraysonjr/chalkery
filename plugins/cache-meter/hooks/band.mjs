@@ -1,15 +1,18 @@
-// Спільна смуга над полем вводу для модів цього репозиторію. Файл однаковий у кожному
-// моді (копію кладе scripts/sync-shared.sh), бо мод ставлять і окремо, без сусідів.
+// SPDX-License-Identifier: MIT
+// The shared band above the prompt for this repository's mods. The file is the same in
+// every mod (scripts/sync-shared.sh puts the copy there), since a mod is also installed
+// alone, without its neighbours.
 //
-// Рушій складає хуки ui.render ланцюжком, і порядок плагінів у ланцюжку не задокументований:
-// він залежить від того, як і в якому порядку їх встановили. Тому кожен мод не ставить свій
-// рядок «над» чи «під» тим, що прийшло знизу, а вкладає його в спільний стовпець за своїм
-// місцем. Хто б не був зверху ланцюжка, смуга виходить однакова: Handoff, кеш, «Що далі?».
+// The engine chains ui.render hooks, and the order of plugins in the chain is not
+// documented: it depends on how and in what order they were installed. So a mod does not
+// put its row "above" or "below" whatever came from further down; it places it in a shared
+// column by its own slot. Whoever is on top of the chain, the band comes out the same:
+// Handoff, cache, "What next?".
 
 export const BAND = 'prompt-band'
 const ROW = 'prompt-band-row:'
 
-// Місце рядка в смузі. Чуже (рядок рушія чи мода не з цього репо) стоїть під нашими.
+// A row's slot in the band. Anything foreign (the engine's row or a mod from elsewhere) goes below ours.
 export const PLACE = { 'handoff-relay': 10, 'cache-meter': 20, 'next-steps': 30 }
 const FOREIGN = 999
 
@@ -19,7 +22,7 @@ function placeOf(row) {
   return key.startsWith(ROW) ? Number(key.slice(ROW.length).split(':')[0]) : FOREIGN
 }
 
-// Рядки, які вже лежать у смузі під нами, або те, що намалював хтось інший.
+// The rows already in the band below us, or whatever someone else drew.
 /** @param {(props: any) => any} Box @param {any} below @returns {any[]} */
 function rowsOf(Box, below) {
   if (below === null || below === undefined || below === false) return []
@@ -29,12 +32,12 @@ function rowsOf(Box, below) {
   return [Box({ key: `${ROW}${FOREIGN}:other`, flexDirection: 'column', children: [below] })]
 }
 
-// Смуга з рядком мода `name` на своєму місці. Пів рядка між рядками: цілий виглядає як порожній абзац.
+// The band with mod `name`'s row in its slot. Half a line between rows: a whole one looks like an empty paragraph.
 /**
- * @param {(props: any) => any} Box стовпець із таблиці поверхні, $.ui.resolve(e).Box
+ * @param {(props: any) => any} Box the column from the surface's table, $.ui.resolve(e).Box
  * @param {'handoff-relay' | 'cache-meter' | 'next-steps'} name
- * @param {any} mine рядок цього мода
- * @param {any} below те, що повернув next(e)
+ * @param {any} mine this mod's row
+ * @param {any} below what next(e) returned
  * @returns {any}
  */
 export function joinBand(Box, name, mine, below) {

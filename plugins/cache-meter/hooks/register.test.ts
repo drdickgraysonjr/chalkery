@@ -1,21 +1,22 @@
+// SPDX-License-Identifier: MIT
 import { describe, expect, mock, test as kitTest } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import en from './locales/en.mjs'
 import uk from './locales/uk.mjs'
 
-// Тести нижче писано під українські написи: мова мода тут uk, якщо тест не задав іншу
+// The tests below are written against the Ukrainian text: the mod's language here is uk unless a test sets another
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const test = (name: string, ...rest: any[]) =>
   rest.length === 1
     ? kitTest(name, { options: { language: 'uk' } }, rest[0])
     : kitTest(name, { ...rest[0], options: { language: 'uk', ...rest[0].options } }, rest[1])
 
-// Сусідні моди репо: кожен вкладає свій рядок у спільну смугу так само, як справжній.
+// The repo's neighbouring mods: each puts its row into the shared band the same way the real one does.
 const fakeHandoffRelay = {
   name: 'handoff-relay',
   register: (on: On) => {
     on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-      // Плагін тесту живе в окремому середовищі без імпортів, тож злиття смуги тут своє, за тим самим договором
+      // A test plugin lives in its own environment without imports, so it merges the band itself, by the same contract
       const below = (await next(e)) as { type?: string; props?: { key?: string }; children?: unknown[] } | null
       const { Box, Text } = $.ui.resolve(e)
       const place = (row: { props?: { key?: string } }) => Number(String(row.props?.key ?? '').split(':')[1] ?? 999)
@@ -32,7 +33,7 @@ const fakeNextSteps = {
   name: 'next-steps',
   register: (on: On) => {
     on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-      // Плагін тесту живе в окремому середовищі без імпортів, тож злиття смуги тут своє, за тим самим договором
+      // A test plugin lives in its own environment without imports, so it merges the band itself, by the same contract
       const below = (await next(e)) as { type?: string; props?: { key?: string }; children?: unknown[] } | null
       const { Box, Text } = $.ui.resolve(e)
       const place = (row: { props?: { key?: string } }) => Number(String(row.props?.key ?? '').split(':')[1] ?? 999)
@@ -206,13 +207,13 @@ async function submit($: any, text = 'next task') {
 
 for (const surface of SURFACES) {
   describe(surface, () => {
-    test('тепла смуга: формат рядка як у cache-keeper, рядок рушія лишається під нею', async ($, on) => {
+    test('warm band: row format as in cache-keeper, the engine row stays below it', async ($, on) => {
       world($, on)
       await start($)
       await step($)
       const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
 
-      // Усі частини, кнопку теж, розділяє та сама сіра паличка; зелена лише крапка; з великої
+      // All parts, the button too, are split by the same dim bar; only the dot is green; capitalised
       const band = await ui.find({ key: 'cache-meter' })
       expect(band?.props.columnGap).toBe(1)
       expect(band?.text).toContain('● Кеш теплий ще 60 хв│Перекешування коштуватиме ≈ 200k│')
@@ -222,8 +223,8 @@ for (const surface of SURFACES) {
       expect((await ui.find({ text: /^●$/ }))?.props.color).toBe('green')
       expect((await ui.find({ text: /^ Кеш теплий ще 60 хв$/ }))?.props.dimColor).toBe(true)
       expect(await ui.find({ text: /^Перекешування коштуватиме ≈ 200k$/ })).toBeDefined()
-      // Тримати теплим видно завжди, поки кеш теплий; тихо, бо час ще є. Справжня кнопка, як Handoff:
-      // без plain, а літера лише в терміналі (десктоп малює її фішкою перед підписом)
+      // Keep warm is always visible while the cache is warm; dim, since there is still time. A real button,
+      // like Handoff: no plain, and the letter only in the terminal (the desktop draws it as a chip before the label)
       const keep = await ui.find({ key: 'keepwarm' })
       expect(keep?.type).toBe('Button')
       expect(keep?.props.label).toBe('Тримати теплим')
@@ -231,12 +232,12 @@ for (const surface of SURFACES) {
       expect(keep?.props.plain).toBeUndefined()
       expect(keep?.props.hotkey).toBe(surface === 'terminal' ? 'k' : undefined)
       expect(await ui.find({ text: /^engine row$/ })).toBeDefined()
-      // Рядки смуги розсунуто на пів рядка, не на цілий порожній
+      // The band's rows are half a line apart, not a whole empty one
       expect((await ui.find({ key: 'prompt-band' }))?.props.rowGap).toBe(0.5)
     })
 
     for (const order of [[fakeHandoffRelay, fakeNextSteps], [fakeNextSteps, fakeHandoffRelay]]) {
-      test(`спільна смуга: кеш між Handoff і «Що далі?», хоч би як завантажились сусіди (${order.map((p) => p.name).join(', ')})`, { plugins: order }, async ($, on) => {
+      test(`shared band: cache between Handoff and "What next?", whatever order the neighbours loaded in (${order.map((p) => p.name).join(', ')})`, { plugins: order }, async ($, on) => {
         world($, on)
         await start($)
         await step($)
@@ -245,7 +246,7 @@ for (const surface of SURFACES) {
       })
     }
 
-    test('без контексту й сесії; ліміти лише від 80%', async ($, on) => {
+    test('no context or session in the band; limits only from 80%', async ($, on) => {
       world($, on)
       on('session.measure', (_$, e) => ({ changed: e.changed }))
       await start($)
@@ -276,7 +277,7 @@ for (const surface of SURFACES) {
       expect((await ui84.find({ key: 'cache-meter' }))?.text).not.toContain('тиждень')
     })
 
-    test('до першого запиту смуги немає, лишається рядок рушія', async ($, on) => {
+    test('no band before the first request, the engine row stays', async ($, on) => {
       world($, on)
       await start($)
       const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
@@ -285,7 +286,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ text: /^engine row$/ })).toBeDefined()
     })
 
-    test('під опитуванням смуга віддає місце', async ($, on) => {
+    test('under a survey the band gives way', async ($, on) => {
       world($, on)
       await start($)
       await step($)
@@ -297,7 +298,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ text: /^engine row$/ })).toBeDefined()
     })
 
-    test('великий кеш остигає: «Тримати теплим» уже не тихе', async ($, on) => {
+    test('big cache cooling: Keep warm is no longer dim', async ($, on) => {
       const w = world($, on)
       await start($)
       await step($)
@@ -311,7 +312,7 @@ for (const surface of SURFACES) {
       expect(keep?.props.hotkey).toBe(surface === 'terminal' ? 'k' : undefined)
     })
 
-    test('холодний великий кеш: червоне попередження про перезапис', async ($, on) => {
+    test('cold big cache: red rewrite warning', async ($, on) => {
       const w = world($, on)
       await start($)
       await step($)
@@ -319,14 +320,14 @@ for (const surface of SURFACES) {
       const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
 
       expect(await ui.find({ text: /^○ Кеш охолов 1 хв тому$/ })).toBeDefined()
-      // Охололий кеш тримати вже нічого
+      // There is nothing left to keep warm in a cold cache
       expect(await ui.find({ key: 'keepwarm' })).toBeUndefined()
       const rewrite = await ui.find({ text: /^Наступне повідомлення перекешує ≈ 200k$/ })
       expect(rewrite).toBeDefined()
       expect(rewrite?.props.color).toBe('red')
     })
 
-    test('keep warm: пінг за 8 хв до кінця кешу, смуга показує kept warm', async ($, on) => {
+    test('keep warm: a ping 8 min before the cache ends, the band shows kept warm', async ($, on) => {
       const w = world($, on)
       await start($)
       await step($)
@@ -340,13 +341,13 @@ for (const surface of SURFACES) {
       expect(await ui.find({ text: /^◆ Тримаю кеш теплим до \d{1,2}:\d\d, 1 пінг 200k$/ })).toBeDefined()
       const keep = await ui.find({ key: 'keepwarm' })
       expect(keep?.props.label).toBe('Не тримати')
-      // Цифри лишаються за пропозиціями next-steps; на десктопі літери немає
+      // Digits stay with the next-steps suggestions; no letter on the desktop
       expect(keep?.props.hotkey).toBe(surface === 'terminal' ? 'k' : undefined)
     })
   })
 }
 
-test('стан для інших модів: warm → cold, ціна перезапису, isBig', { plugins: [peek] }, async ($, on) => {
+test('state for other mods: warm → cold, rewrite cost, isBig', { plugins: [peek] }, async ($, on) => {
   const w = world($, on)
   await start($)
   expect((await state($)).kind).toBe('unknown')
@@ -358,7 +359,7 @@ test('стан для інших модів: warm → cold, ціна перез�
   expect((await state($)).kind).toBe('cold')
 })
 
-test('/cache big піднімає поріг: isBig у стані гасне', { plugins: [peek] }, async ($, on) => {
+test('/cache big raises the threshold: isBig in the state goes off', { plugins: [peek] }, async ($, on) => {
   world($, on)
   await start($)
   await step($)
@@ -367,7 +368,7 @@ test('/cache big піднімає поріг: isBig у стані гасне', {
   expect((await state($)).isBig).toBe(false)
 })
 
-test('холодна відправка з /handoff у сесії: варіант Handoff скасовує надсилання і запускає /handoff', async ($, on) => {
+test('cold send with /handoff in the session: the Handoff choice cancels the send and runs /handoff', async ($, on) => {
   const w = world($, on, { commands: ['handoff', 'cache'], answer: 'Запустити /handoff' })
   await start($)
   await step($)
@@ -382,7 +383,7 @@ test('холодна відправка з /handoff у сесії: варіан�
   expect(w.runs).toContain('handoff')
 })
 
-test('холодна відправка, /handoff лише зі скіла плагіна: варіант запускає його повною назвою', async ($, on) => {
+test('cold send, /handoff only from a plugin skill: the choice runs it by its full name', async ($, on) => {
   const w = world($, on, { commands: ['handoff-relay:handoff', 'cache'], answer: 'Запустити /handoff-relay:handoff' })
   await start($)
   await step($)
@@ -395,7 +396,7 @@ test('холодна відправка, /handoff лише зі скіла пл�
   expect(w.runs).toContain('handoff-relay:handoff')
 })
 
-test('холодна відправка без /handoff: варіанта немає, «Скасувати» скасовує', async ($, on) => {
+test('cold send without /handoff: no such choice, Cancel cancels', async ($, on) => {
   const w = world($, on, { commands: ['cache'], answer: 'Скасувати' })
   await start($)
   await step($)
@@ -408,7 +409,7 @@ test('холодна відправка без /handoff: варіанта нем
   expect(w.runs).not.toContain('handoff')
 })
 
-test('холодна відправка: «Надіслати все одно» пропускає текст як є', async ($, on) => {
+test('cold send: Send anyway lets the text through as is', async ($, on) => {
   const w = world($, on, { commands: ['handoff'], answer: 'Надіслати все одно' })
   await start($)
   await step($)
@@ -420,7 +421,7 @@ test('холодна відправка: «Надіслати все одно» 
   expect(r.text).toBe('привіт')
 })
 
-test('теплий кеш або малий контекст: питання немає', async ($, on) => {
+test('warm cache or small context: no question', async ($, on) => {
   const w = world($, on, { commands: ['handoff'], answer: 'Скасувати' })
   await start($)
   await step($)
@@ -435,7 +436,7 @@ test('теплий кеш або малий контекст: питання н�
 })
 
 for (const surface of SURFACES) {
-  test(`${surface}: відмінювання і години — 2 пінги, 1 год 05 хв, перекешовано 1 раз`, async ($, on) => {
+  test(`${surface}: plural forms and hours — 2 pings, 1 h 05 min, rewritten once`, async ($, on) => {
     const w = world($, on)
     await start($)
     await step($)
@@ -452,7 +453,7 @@ for (const surface of SURFACES) {
     const cold = (await $.command.run({ command: 'cache', ...typed })) as { text: string }
     expect(cold.text).toMatch(/Кеш охолов 1 год \d\d хв тому/)
 
-    // наступний запит пише весь контекст у кеш заново
+    // the next request writes the whole context to the cache again
     w.setRead(0)
     w.setWrite(200_000)
     await step($)
@@ -461,9 +462,9 @@ for (const surface of SURFACES) {
   })
 }
 
-// Мова: en за явною опцією, auto за мовою відповідей Claude з /config, англійська без неї
+// Language: en by the explicit option, auto by the language of Claude's replies from /config, English without it
 for (const surface of ['terminal', 'desktop'] as const) {
-  test(`${surface}: language en — смуга англійською`, { options: { language: 'en' } }, async ($, on) => {
+  test(`${surface}: language en — band in English`, { options: { language: 'en' } }, async ($, on) => {
     world($, on)
     await start($)
     await step($)
@@ -474,7 +475,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect(await ui.find({ text: /Кеш/ })).toBeUndefined()
   })
 
-  test(`${surface}: language auto без /config — англійська`, { options: { language: 'auto' } }, async ($, on) => {
+  test(`${surface}: language auto without /config — English`, { options: { language: 'auto' } }, async ($, on) => {
     world($, on)
     await start($)
     await step($)
@@ -482,7 +483,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect((await ui.find({ key: 'keepwarm' }))?.props.label).toBe('Keep warm')
   })
 
-  test(`${surface}: language auto, у /config мова ukrainian — українська`, { options: { language: 'auto' } }, async ($, on) => {
+  test(`${surface}: language auto, /config language ukrainian — Ukrainian`, { options: { language: 'auto' } }, async ($, on) => {
     world($, on)
     on('config.list', () => ({ value: [{ key: 'language', label: 'Language', kind: 'text', value: 'ukrainian', provider: { kind: 'engine' }, isLocked: false }] }) as never)
     await start($)
@@ -687,7 +688,7 @@ test('state for other mods: old fields stay, unit and rewrite tokens added', { p
   expect(value).toMatchObject({ kind: 'warm', ctx: 200_010, isBig: true, rewriteUsd: 1, ttlMin: 5, model: 'opus-5-5', rewriteTokens: 200_010, unit: 'usd' })
 })
 
-kitTest('переклади: в en і uk однаковий набір ключів', async () => {
+kitTest('translations: en and uk have the same set of keys', async () => {
   const keys = (o: object): string[] =>
     Object.entries(o).flatMap(([k, v]) => (v && typeof v === 'object' ? keys(v).map((n) => `${k}.${n}`) : [k])).sort()
   expect(keys(uk)).toEqual(keys(en))
