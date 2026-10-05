@@ -1,5 +1,7 @@
 # chalkery
 
+[![CI](https://github.com/drdickgraysonjr/chalkery/actions/workflows/ci.yml/badge.svg)](https://github.com/drdickgraysonjr/chalkery/actions/workflows/ci.yml)
+
 English | [Українська](README.uk.md)
 
 A chalkery is where the chalk lives: a home for Claude Code mods that draw above the prompt.
@@ -99,13 +101,15 @@ plugins/primaries/              the pack: only dependencies on the three mods
 shared/band.mjs                   the shared band contract
 shared/i18n.mjs                   picking the language for the language option
 scripts/sync-shared.sh            copies shared/*.mjs into each mod's hooks/
+scripts/check.sh                  runs every check CI runs
+.github/workflows/ci.yml          CI: on every push and pull request, and weekly
 ```
 
 **The shared band.** The order in which the engine chains different plugins' `ui.render` hooks is not documented and depends on how they were installed. So a mod does not put its row above or below what `next(e)` returned. It places its row into the shared `prompt-band` column at its own spot: Handoff 10, cache 20, What next? 30. Anything foreign, such as the engine's own row or a mod from elsewhere, goes below them. A mod may be installed without its neighbours, so `band.mjs` and `i18n.mjs` are copied into each one. Edit `shared/`, then run `scripts/sync-shared.sh`; `scripts/sync-shared.sh --check` confirms the copies match.
 
 **Languages.** A mod's code holds no text a person sees: it reads it from `locales/<language>.mjs`. A new language is one more file in each mod, a line in `LOCALES` and a pattern in `shared/i18n.mjs`. Each mod's tests check that every locale has the same keys.
 
-**Checks.** For each mod:
+**Checks.** `scripts/check.sh` runs them all: it validates the manifests, runs each mod's tests and the phase script's tests, compares the shared copies, checks versions against release tags and installs `primaries` into a throwaway home folder. CI runs the same on every push and pull request with Claude Code 2.1.289, the oldest version this README promises, and every Monday with the newest one; GitHub emails you when the weekly run fails. To check a single mod:
 
 ```bash
 claude plugin validate plugins/cache-meter && claude plugin test plugins/cache-meter
@@ -115,7 +119,16 @@ The band tests load the neighbouring mods as separate plugins in both orders. Th
 
 **Live development.** To work on your checkout rather than the installed version, add the mod folders to `CLAUDE_CODE_PLUGIN_DIRS` (colon-separated). A plugin loaded from there shadows an installed one of the same name.
 
-**Release.** Bump `version` in `plugins/<mod>/.claude-plugin/plugin.json`. Without it, `claude plugin update` will not see the change.
+**Release.** Raise `version` in `plugins/<mod>/.claude-plugin/plugin.json`. Without it, `claude plugin update` will not see the change, and CI fails when a mod changed since its last release tag but kept its version. After the merge, tag the release from the mod's folder: `claude plugin tag --push` creates `<mod>--v<version>`, the tag that plugin dependencies resolve against.
+
+**Release checklist.** CI does not see the band itself, so check by hand before tagging:
+
+1. `scripts/check.sh` passes.
+2. With the changed mods in `CLAUDE_CODE_PLUGIN_DIRS`, a new terminal session shows the band in order: Handoff, cache, What next?
+3. The same in the desktop app's Code tab.
+4. Handoff runs `/handoff`, What next? offers suggestions, and `/cache` shows the cache status.
+5. With `language` set to `uk` and then `en`, every label changes language.
+6. Each changed mod has a new `version`.
 
 ## Licenses
 
