@@ -7,22 +7,46 @@
   "plugins": [
     {
       "name": "primaries",
-      "source": "./plugins/primaries",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/drdickgraysonjr/chalkery.git",
+        "path": "plugins/primaries",
+        "ref": "primaries--v0.1.0",
+        "sha": "f8833ab37516f4cdf30be2a6459cbddc0f9a6cad"
+      },
       "description": "The pack: all three mods in one install, like three primary colours."
     },
     {
       "name": "handoff-relay",
-      "source": "./plugins/handoff-relay",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/drdickgraysonjr/chalkery.git",
+        "path": "plugins/handoff-relay",
+        "ref": "handoff-relay--v0.3.0",
+        "sha": "f8833ab37516f4cdf30be2a6459cbddc0f9a6cad"
+      },
       "description": "A Handoff button above the prompt, lit from 180k tokens of context."
     },
     {
       "name": "cache-meter",
-      "source": "./plugins/cache-meter",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/drdickgraysonjr/chalkery.git",
+        "path": "plugins/cache-meter",
+        "ref": "cache-meter--v0.3.0",
+        "sha": "f8833ab37516f4cdf30be2a6459cbddc0f9a6cad"
+      },
       "description": "Prompt cache status: how long it stays warm, what a re-cache costs, Keep warm."
     },
     {
       "name": "next-steps",
-      "source": "./plugins/next-steps",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/drdickgraysonjr/chalkery.git",
+        "path": "plugins/next-steps",
+        "ref": "next-steps--v1.3.0",
+        "sha": "f8833ab37516f4cdf30be2a6459cbddc0f9a6cad"
+      },
       "description": "A What next? button: up to three next prompts on press."
     }
   ]
