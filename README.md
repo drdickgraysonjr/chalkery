@@ -99,7 +99,7 @@ Most often it is the old-version error above.
 ## For authors
 
 ```
-.claude-plugin/marketplace.json   the catalog: the pack and three mods
+.claude-plugin/marketplace.json   the catalog: the pack and three mods, each at its release tag
 plugins/<mod>/                    each mod stands alone and installs on its own
 plugins/<mod>/hooks/locales/      en.mjs and uk.mjs: every word the mod shows a person
 plugins/handoff-relay/skills/     the handoff skill and its phase script (python3, with tests)
@@ -107,6 +107,7 @@ plugins/primaries/              the pack: only dependencies on the three mods
 shared/band.mjs                   the shared band contract
 shared/i18n.mjs                   picking the language for the language option
 scripts/sync-shared.sh            copies shared/*.mjs into each mod's hooks/
+scripts/pin-releases.sh           points the catalog at each mod's latest release tag
 scripts/check.sh                  runs every check CI runs
 docs/                             the screenshots in the READMEs
 .github/workflows/ci.yml          CI: on every push and pull request, and weekly
@@ -116,7 +117,7 @@ docs/                             the screenshots in the READMEs
 
 **Languages.** A mod's code holds no text a person sees: it reads it from `locales/<language>.mjs`. A new language is one more file in each mod, a line in `LOCALES` and a pattern in `shared/i18n.mjs`. Each mod's tests check that every locale has the same keys.
 
-**Checks.** `scripts/check.sh` runs them all: it validates the manifests, runs each mod's tests and the phase script's tests, compares the shared copies, checks versions against release tags and installs `primaries` into a throwaway home folder. CI runs the same on every push and pull request with Claude Code 2.1.289, the oldest version this README promises, and every Monday with the newest one; GitHub emails you when the weekly run fails. To check a single mod:
+**Checks.** `scripts/check.sh` runs them all: it validates the manifests, runs each mod's tests and the phase script's tests, compares the shared copies, checks versions against release tags, checks that the catalog points at the latest release tags and installs `primaries` from the catalog into a throwaway home folder. CI runs the same on every push and pull request with Claude Code 2.1.289, the oldest version this README promises, and every Monday with the newest one; GitHub emails you when the weekly run fails. To check a single mod:
 
 ```bash
 claude plugin validate plugins/cache-meter && claude plugin test plugins/cache-meter
@@ -126,7 +127,9 @@ The band tests load the neighbouring mods as separate plugins in both orders. Th
 
 **Live development.** To work on your checkout rather than the installed version, add the mod folders to `CLAUDE_CODE_PLUGIN_DIRS` (colon-separated). A plugin loaded from there shadows an installed one of the same name.
 
-**Release.** Raise `version` in `plugins/<mod>/.claude-plugin/plugin.json`. Without it, `claude plugin update` will not see the change, and CI fails when a mod changed since its last release tag but kept its version. After the merge, tag the release from the mod's folder: `claude plugin tag --push` creates `<mod>--v<version>`, the tag that plugin dependencies resolve against.
+**Release.** Raise `version` in `plugins/<mod>/.claude-plugin/plugin.json`. Without it, `claude plugin update` will not see the change, and CI fails when a mod changed since its last release tag but kept its version. After the merge, tag the release from the mod's folder: `claude plugin tag --push` creates `<mod>--v<version>`, the tag that plugin dependencies resolve against. Then run `scripts/pin-releases.sh` and merge the change to `marketplace.json` in a pull request of its own.
+
+**What users get.** Each catalog entry names a release tag and its commit, so `claude plugin install` and `claude plugin update` give the released code, never what is on `main` between releases. A release reaches users only once the catalog points at its tag; until then `scripts/check.sh` fails on the stale entry. Release tags cannot be moved or deleted on GitHub, and `main` takes changes only through a pull request with passing CI.
 
 **Release checklist.** CI does not see the band itself, so check by hand before tagging:
 

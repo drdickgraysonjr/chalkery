@@ -15,4 +15,5 @@ Every code file starts with an `SPDX-License-Identifier` comment, after a sheban
 - Run `scripts/check.sh`. CI runs the same checks on every push and pull request against the oldest Claude Code the README promises, and weekly against the newest.
 - Edit shared code in `shared/`, then run `scripts/sync-shared.sh`; never edit the copies in `plugins/<mod>/hooks/`.
 - A mod that changed since its last release tag (`<mod>--v<version>`) needs a higher `version` in its `plugin.json`; CI fails otherwise.
-- The marketplace installs from `main`. A change to how a mod behaves is checked live through `CLAUDE_CODE_PLUGIN_DIRS` before it is merged.
+- The marketplace installs each mod from its release tag, not from `main`; `main` takes changes only through a pull request with passing CI. A change to how a mod behaves is checked live through `CLAUDE_CODE_PLUGIN_DIRS` before it is merged.
+- A release is: raise `version`, merge, `claude plugin tag --push` in the mod's folder, then `scripts/pin-releases.sh` and a pull request with the new `marketplace.json`.
