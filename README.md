@@ -10,7 +10,7 @@ Three Claude Code mods that draw a band above the prompt, in the terminal and in
 
 | Mod | What it does |
 | --- | --- |
-| [`handoff-relay`](plugins/handoff-relay) | A Handoff button that runs `/handoff`. It lights up from 180k tokens of context. The mod brings its own `handoff` skill, so the button works out of the box. |
+| [`handoff-relay`](plugins/handoff-relay) | A Handoff button that runs `/handoff`. It lights up from 180k tokens of context (the `threshold` option). Once the handoff document is written, the button gives way to "Handoff created". The mod brings its own `handoff` skill, so the button works out of the box. |
 | [`cache-meter`](plugins/cache-meter) | Shows how long the prompt cache stays warm and what a re-cache would cost. Keep warm stops it from going cold. Before you send into a big cold cache, it asks first. |
 | [`next-steps`](plugins/next-steps) | A What next? button that suggests up to three next prompts. The one you pick becomes a draft in the input box; you press Enter. |
 
@@ -126,7 +126,7 @@ The band tests load the neighbouring mods as separate plugins in both orders. Th
 1. `scripts/check.sh` passes.
 2. With the changed mods in `CLAUDE_CODE_PLUGIN_DIRS`, a new terminal session shows the band in order: Handoff, cache, What next?
 3. The same in the desktop app's Code tab.
-4. Handoff runs `/handoff`, What next? offers suggestions, and `/cache` shows the cache status.
+4. Handoff runs `/handoff` and, once the document is written, gives way to "Handoff created" in the terminal too; What next? offers suggestions, and `/cache` shows the cache status.
 5. With `language` set to `uk` and then `en`, every label changes language.
 6. Each changed mod has a new `version`.
 

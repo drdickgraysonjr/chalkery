@@ -354,3 +354,179 @@ for (const surface of SURFACES) {
 kitTest('переклади: в en і uk однаковий набір ключів', async () => {
   expect(Object.keys(uk).sort()).toEqual(Object.keys(en).sort())
 })
+
+// A handoff without a card (the terminal, any /handoff): the written .md is the signal.
+const DOC = '/vault/wiki/synthesis/handoffs/Chalkery repository review — H4.md'
+const written = (file_path: string) => ({
+  result: { type: 'create', filePath: file_path, content: '# h', structuredPatch: [], originalFile: null },
+})
+const writeDoc = ($: { tool: { call: (a: never) => Promise<unknown> } }, file_path = DOC) =>
+  $.tool.call({ tool: 'Write', file_path, content: '# h' } as never)
+
+for (const surface of SURFACES) {
+  describe(surface, () => {
+    test('file: a .md written in the handoff turn hands off once the turn answers', async ($, on) => {
+      engineRow(on)
+      on('command.run', () => ({ text: '' }))
+      on('tool.call', { tool: 'Write' }, (_$, e) => written(e.file_path) as never)
+      on('turn.complete', () => ({ text: '' }))
+      const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
+
+      await ui.press({ key: 'handoff' })
+      await writeDoc($ as never)
+      // Not yet: the turn may still stop on a question
+      expect(await ui.find({ text: /Handoff створено/ })).toBeUndefined()
+      await $.turn.complete(turnEnd)
+
+      expect(await ui.find({ key: 'handoff' })).toBeUndefined()
+      const line = await ui.find({ key: 'handed-off' })
+      expect(line?.text).toContain('Handoff створено: Chalkery repository review — H4.')
+      expect(line?.text).toContain('Продовжуй у новій сесії')
+      expect(line?.text).not.toContain('Start locally')
+    })
+  })
+}
+
+describe('terminal', () => {
+  const surface = 'terminal' as const
+  const world = (on: On, write: (file_path: string) => unknown = written) => {
+    engineRow(on)
+    on('command.run', () => ({ text: '' }))
+    on('tool.call', { tool: 'Write' }, (_$, e) => write(e.file_path) as never)
+    on('tool.call', { tool: 'Edit' }, (_$, e) => ({
+      result: { filePath: e.file_path, oldString: 'a', newString: 'b', originalFile: 'a', structuredPatch: [], userModified: false, replaceAll: false },
+    }) as never)
+    on('tool.call', { tool: 'Skill' }, () => ({ result: { success: true, commandName: 'handoff' } }) as never)
+    on('tool.call', { tool: SPAWN }, () => ({ result: 'created' }))
+    on('turn.complete', () => ({ text: '' }))
+  }
+  const mount = ($: { ui: { mount: (a: never) => Promise<unknown> } }) =>
+    $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props } as never) as Promise<{
+      find: (q: object) => Promise<{ text?: string } | undefined>
+      press: (q: object) => Promise<void>
+    }>
+
+  test('file: a turn that ends without an answer does not hand off', async ($, on) => {
+    world(on)
+    const ui = await mount($ as never)
+    for (const reason of ['aborted', 'error'] as const) {
+      await ui.press({ key: 'handoff' })
+      await writeDoc($ as never)
+      await $.turn.complete({ ...turnEnd, reason, isAborted: reason === 'aborted' })
+      expect(await ui.find({ key: 'handoff' })).toBeDefined()
+    }
+    // What was written in an aborted turn does not carry over into the next one
+    await ui.press({ key: 'handoff' })
+    await $.turn.complete(turnEnd)
+    expect(await ui.find({ key: 'handoff' })).toBeDefined()
+  })
+
+  test('file: no .md written, no handoff', async ($, on) => {
+    world(on)
+    const ui = await mount($ as never)
+    await ui.press({ key: 'handoff' })
+    await writeDoc($ as never, '/repo/notes.txt')
+    await $.turn.complete(turnEnd)
+    expect(await ui.find({ key: 'handoff' })).toBeDefined()
+    expect(await ui.find({ text: /Handoff створено/ })).toBeUndefined()
+  })
+
+  test('file: a failed write does not count', async ($, on) => {
+    world(on, () => ({ result: 'EACCES', isError: true }))
+    const ui = await mount($ as never)
+    await ui.press({ key: 'handoff' })
+    await writeDoc($ as never)
+    await $.turn.complete(turnEnd)
+    expect(await ui.find({ key: 'handoff' })).toBeDefined()
+  })
+
+  test('file: a write held for review does not count', async ($, on) => {
+    world(on, (file_path) => ({ result: { ...written(file_path).result, staged: true } }))
+    const ui = await mount($ as never)
+    await ui.press({ key: 'handoff' })
+    await writeDoc($ as never)
+    await $.turn.complete(turnEnd)
+    expect(await ui.find({ key: 'handoff' })).toBeDefined()
+  })
+
+  test('file: an edited .md alone does not count', async ($, on) => {
+    world(on)
+    const ui = await mount($ as never)
+    await ui.press({ key: 'handoff' })
+    await $.tool.call({ tool: 'Edit', file_path: DOC, old_string: 'a', new_string: 'b' } as never)
+    await $.turn.complete(turnEnd)
+    expect(await ui.find({ key: 'handoff' })).toBeDefined()
+  })
+
+  test('file: a .md written outside a handoff turn does not count', async ($, on) => {
+    world(on)
+    const ui = await mount($ as never)
+    await writeDoc($ as never)
+    await $.turn.complete(turnEnd)
+    expect(await ui.find({ key: 'handoff' })).toBeDefined()
+    expect(await ui.find({ text: /Handoff створено/ })).toBeUndefined()
+  })
+
+  test("file: the card's title wins over the file name", async ($, on) => {
+    world(on)
+    const ui = await mount($ as never)
+    await ui.press({ key: 'handoff' })
+    await writeDoc($ as never)
+    await $.tool.call({ tool: SPAWN, title: TITLE, prompt: 'p', tldr: 't' })
+    await $.turn.complete(turnEnd)
+    const line = await ui.find({ key: 'handed-off' })
+    expect(line?.text).toContain(`Handoff створено: ${TITLE}.`)
+    expect(line?.text).toContain('Start locally')
+  })
+
+  test('file: the handoff skill called by the model opens a handoff turn', async ($, on) => {
+    world(on)
+    const ui = await mount($ as never)
+    // Another skill opens nothing
+    await $.tool.call({ tool: 'Skill', skill: 'grill-me' } as never)
+    await writeDoc($ as never)
+    await $.turn.complete(turnEnd)
+    expect(await ui.find({ key: 'handoff' })).toBeDefined()
+
+    // A .md written earlier in the turn, before the skill, is not the handoff document
+    await writeDoc($ as never, '/repo/plan.md')
+    await $.tool.call({ tool: 'Skill', skill: 'handoff-relay:handoff' } as never)
+    await writeDoc($ as never)
+    await $.turn.complete(turnEnd)
+    expect(await ui.find({ text: /Handoff створено: Chalkery repository review — H4\./ })).toBeDefined()
+  })
+})
+
+// The threshold option moves where the button lights up.
+for (const surface of SURFACES) {
+  describe(surface, () => {
+    test('threshold: 120000 lights the button from 120k', { options: { threshold: 120_000 } }, async ($, on) => {
+      engineRow(on)
+      on('session.measure', (_$, e) => ({ changed: e.changed }))
+      await $.session.measure(measure(120_000))
+      const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
+      expect((await ui.find({ key: 'handoff' }))?.props.variant).toBe('primary')
+      expect(await ui.find({ text: /^ Контекст 120k, час передавати$/ })).toBeDefined()
+    })
+
+    test('threshold: 120000 keeps the button quiet below 120k', { options: { threshold: 120_000 } }, async ($, on) => {
+      engineRow(on)
+      on('session.measure', (_$, e) => ({ changed: e.changed }))
+      await $.session.measure(measure(119_999))
+      const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
+      expect((await ui.find({ key: 'handoff' }))?.props.variant).toBeUndefined()
+    })
+
+    for (const threshold of [0, -5]) {
+      test(`threshold: zero or negative falls back to 180k (${threshold})`, { options: { threshold } }, async ($, on) => {
+        engineRow(on)
+        on('session.measure', (_$, e) => ({ changed: e.changed }))
+        await $.session.measure(measure(179_999))
+        const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
+        expect((await ui.find({ key: 'handoff' }))?.props.variant).toBeUndefined()
+        await $.session.measure(measure(180_000))
+        expect((await ui.find({ key: 'handoff' }))?.props.variant).toBe('primary')
+      })
+    }
+  })
+}

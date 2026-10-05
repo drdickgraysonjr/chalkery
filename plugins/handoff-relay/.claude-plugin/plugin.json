@@ -1,7 +1,7 @@
 {
   "name": "handoff-relay",
-  "version": "0.2.0",
-  "description": "A Handoff button above the prompt: runs /handoff and lights up from 180k tokens of context. Joins cache-meter and next-steps in one band.",
+  "version": "0.3.0",
+  "description": "A Handoff button above the prompt: runs /handoff and lights up from 180k tokens of context (the threshold option). Joins cache-meter and next-steps in one band.",
   "types": "./types/index.d.ts",
   "author": {
     "name": "Yehor Hunia"
@@ -19,6 +19,13 @@
         "en",
         "uk"
       ]
+    },
+    "threshold": {
+      "type": "number",
+      "title": "Threshold / Поріг",
+      "description": "Tokens of context from which the Handoff button lights up. Токени контексту, з яких кнопка Handoff підсвічується.",
+      "required": false,
+      "default": 180000
     }
   }
 }
