@@ -530,3 +530,34 @@ for (const surface of SURFACES) {
     }
   })
 }
+
+// A handoff the button did not start shows the pending line too, and the button is back after the turn.
+for (const surface of SURFACES) {
+  describe(surface, () => {
+    test('pending: a typed /handoff shows the pending line until the turn ends', async ($, on) => {
+      engineRow(on)
+      on('command.run', () => ({ text: '' }))
+      on('turn.complete', () => ({ text: '' }))
+      const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
+
+      await $.command.run({ command: 'handoff', args: '', ...typed } as never)
+      expect(await ui.find({ key: 'handoff' })).toBeUndefined()
+      expect(await ui.find({ text: /^Handoff: пишу документ…$/ })).toBeDefined()
+
+      await $.turn.complete(turnEnd)
+      expect(await ui.find({ key: 'handoff' })).toBeDefined()
+    })
+
+    test('pending: a handoff skill called by the model shows the pending line', async ($, on) => {
+      engineRow(on)
+      on('tool.call', { tool: 'Skill' }, () => ({ result: { success: true, commandName: 'handoff' } }) as never)
+      const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
+
+      await $.tool.call({ tool: 'Skill', skill: 'grill-me' } as never)
+      expect(await ui.find({ key: 'handoff' })).toBeDefined()
+      await $.tool.call({ tool: 'Skill', skill: 'handoff' } as never)
+      expect(await ui.find({ key: 'handoff' })).toBeUndefined()
+      expect(await ui.find({ text: /^Handoff: пишу документ…$/ })).toBeDefined()
+    })
+  })
+}
