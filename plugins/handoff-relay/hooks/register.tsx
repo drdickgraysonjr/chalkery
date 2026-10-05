@@ -74,6 +74,13 @@ const markHandedOff = async ($: Engine, title: unknown, result: { deny?: unknown
   }
 }
 
+// A handoff the button did not start still opens a handoff turn and shows the pending line,
+// so the button is out of the way until the turn ends, just as after a press.
+const startHandoffTurn = async ($: Engine) => {
+  await update($, isHandoffTurn, () => true)
+  await update($, isPending, () => true)
+}
+
 // The document's name for the band: the file name without its folder and `.md`.
 const docTitle = (path: string) => path.split(/[\\/]/).pop()!.replace(/\.md$/i, '')
 
@@ -108,16 +115,16 @@ export const register: Register = (on, options) => {
     return result
   })
 
-  // A /handoff typed by hand opens a handoff turn just as the button does.
+  // A /handoff typed by hand.
   on('command.run', async ($, e, next) => {
-    if (isHandoffName(e.command)) await update($, isHandoffTurn, () => true)
+    if (isHandoffName(e.command)) await startHandoffTurn($)
 
     return next(e)
   })
 
   // So does the handoff skill when the model calls it ("write a handoff").
   on('tool.call', { tool: 'Skill' }, async ($, e, next) => {
-    if (isHandoffName(e.skill)) await update($, isHandoffTurn, () => true)
+    if (isHandoffName(e.skill)) await startHandoffTurn($)
 
     return next(e)
   })
