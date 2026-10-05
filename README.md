@@ -8,6 +8,12 @@ A chalkery is where the chalk lives: a home for Claude Code mods that draw above
 
 Three Claude Code mods that draw a band above the prompt, in the terminal and in the desktop app's Code tab.
 
+![The band in the desktop app's Code tab: Handoff with the context size, the cache status with Keep warm, and What next?](docs/band-desktop-en.png)
+
+![The same band in the terminal](docs/band-terminal-en.png)
+
+*The screenshots were taken with the `threshold` option lowered, so Handoff lights up below 180k.*
+
 | Mod | What it does |
 | --- | --- |
 | [`handoff-relay`](plugins/handoff-relay) | A Handoff button that runs `/handoff`. It lights up from 180k tokens of context (the `threshold` option). Once the handoff document is written, the button gives way to "Handoff created". The mod brings its own `handoff` skill, so the button works out of the box. |
@@ -102,6 +108,7 @@ shared/band.mjs                   the shared band contract
 shared/i18n.mjs                   picking the language for the language option
 scripts/sync-shared.sh            copies shared/*.mjs into each mod's hooks/
 scripts/check.sh                  runs every check CI runs
+docs/                             the screenshots in the READMEs
 .github/workflows/ci.yml          CI: on every push and pull request, and weekly
 ```
 
