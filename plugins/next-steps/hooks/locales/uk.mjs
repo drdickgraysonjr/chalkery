@@ -2,8 +2,9 @@
 
 export default {
   ask: 'Що далі?',
-  // An amount in tokens, as cache-meter shows it on a subscription
-  tok: (tokens) => `${tokens} ток.`,
+  // An amount in tokens, as cache-meter shows it on a subscription.
+  // Bare, as 200k: at these sizes tokens come in thousands, and no $ means they are not dollars
+  tok: (tokens) => tokens,
   dismiss: 'Сховати',
   loading: 'Що далі: підбираю…',
   nothing: 'Що далі: модель не має що запропонувати',

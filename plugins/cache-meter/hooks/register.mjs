@@ -282,7 +282,9 @@ async function stopKeepWarm($, why) {
   const s = await session($)
   if (!s.keepWarm) return
   await change($, (x) => ({ ...x, keepWarm: false }))
-  $.ui.toast(L.stoppedKeeping(why, pings(s.pings), amount(s, s.pingTokens, s.pingUsd)), { timeoutMs: 8000 })
+  // Before the first ping there is nothing to count
+  const text = s.pings ? L.stoppedKeeping(why, pings(s.pings), amount(s, s.pingTokens, s.pingUsd)) : L.stoppedKeepingNoPings(why)
+  $.ui.toast(text, { timeoutMs: 8000 })
 }
 
 async function keepWarmStep($) {
@@ -361,7 +363,10 @@ function statusText(s) {
   if (st.kind === 'warm' || st.kind === 'cooling') lines.push(L.statusWarm(minutes(st.left)))
   const r = rewrite(s)
   if (st.kind === 'cold') lines.push(L.statusCold(minutes(-st.left), statusAmount(s, r.tokens, r.usd)))
-  if (s.keepWarm) lines.push(L.statusKept(clock(s.keepWarmUntil), pings(s.pings), statusAmount(s, s.pingTokens, s.pingUsd)))
+  if (s.keepWarm) {
+    const until = clock(s.keepWarmUntil)
+    lines.push(s.pings ? L.statusKept(until, pings(s.pings), statusAmount(s, s.pingTokens, s.pingUsd)) : L.statusKeptNoPings(until))
+  }
   if (s.rateLimits.length) lines.push(L.statusLimits(limitsText(s.rateLimits)))
   const re = restarts(s)
   const times = s.coldRestarts.length ? `${re.times} (≈ ${statusAmount(s, re.tokens, re.usd)})` : re.times
@@ -596,7 +601,10 @@ export function register(on, options) {
     const st = cacheState(s)
     const big = isBig(s)
     const parts = []
-    if (st.kind === 'kept') parts.push(Text({ color: 'cyan', children: [L.kept(clock(s.keepWarmUntil), pings(s.pings), amount(s, s.pingTokens, s.pingUsd))] }))
+    if (st.kind === 'kept') {
+      const until = clock(s.keepWarmUntil)
+      parts.push(Text({ color: 'cyan', children: [s.pings ? L.kept(until, pings(s.pings), amount(s, s.pingTokens, s.pingUsd)) : L.keptNoPings(until)] }))
+    }
     // All is well, so only the dot is green and the words stay dim
     else if (st.kind === 'warm') parts.push(Text({ children: [Text({ color: 'green', children: ['●'] }), Text({ dimColor: true, children: [L.warm(minutes(st.left))] })] }))
     else if (st.kind === 'cooling') parts.push(Text({ color: 'yellow', bold: true, children: [L.cooling(minutes(st.left))] }))

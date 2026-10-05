@@ -17,14 +17,16 @@ export default {
   times: (n) => `${n} ${plural(n, 'раз', 'рази', 'разів')}`,
   pings: (n) => `${n} ${plural(n, 'пінг', 'пінги', 'пінгів')}`,
   ttlSource: { default: 'типово', subscription: 'підписка', api: 'API', measured: 'виміряно', engine: 'від рушія', manual: 'задано вручну на цю сесію' },
-  // An amount in tokens, where dollars would not be real: on a subscription or for a model without prices
-  tok: (tokens) => `${tokens} ток.`,
+  // An amount in tokens, where dollars would not be real: on a subscription or for a model without prices.
+  // Bare, as 200k: at these sizes tokens come in thousands, and no $ means they are not dollars
+  tok: (tokens) => tokens,
   apiEquivalent: (usd) => `API-еквівалент ${usd}`,
   unpricedModel: (model) => `${model}, ціни невідомі`,
   limit: { five_hour: '5 год', seven_day: 'тиждень', spend_limit: 'витрати' },
   onOff: (on) => (on ? 'увімкнено' : 'вимкнено'),
 
   // Смуга над полем вводу
+  keptNoPings: (until) => `◆ Тримаю кеш теплим до ${until}`,
   kept: (until, pings, amount) => `◆ Тримаю кеш теплим до ${until}, ${pings} ${amount}`,
   warm: (left) => ` Кеш теплий ще ${left}`,
   cooling: (left) => `◐ Кеш охолоне за ${left}`,
@@ -48,6 +50,7 @@ export default {
   eachReads: (amount) => `читає ≈ ${amount}`,
   eachCosts: (usd) => `коштує ≈ ${usd}`,
   notKeeping: (limits) => `Не тримаю кеш теплим: ліміт плану вже від 90% (${limits}), а кожен пінг витрачав би його далі.`,
+  stoppedKeepingNoPings: (why) => `Більше не тримаю кеш теплим: ${why}.`,
   stoppedKeeping: (why, pings, amount) => dot(`Більше не тримаю кеш теплим: ${why}. Було ${pings} на ${amount}`),
   whyTimeUp: 'вийшов час',
   whyOff: 'вимкнено',
@@ -79,6 +82,7 @@ export default {
   statusUnknown: 'У цій сесії ще не було запиту, тож стан кешу невідомий.',
   statusWarm: (left) => `Кеш теплий ще ≈ ${left}.`,
   statusCold: (ago, amount) => dot(`Кеш охолов ${ago} тому. Наступне повідомлення перекешує його: ≈ ${amount}`),
+  statusKeptNoPings: (until) => `Тримаю кеш теплим до ${until}: пінгів ще не було.`,
   statusKept: (until, pings, amount) => dot(`Тримаю кеш теплим до ${until}: поки що ${pings}, ≈ ${amount}`),
   statusLimits: (text) => `Використано лімітів плану: ${text}.`,
   statusCost: (cost, times) => `Вартість сесії поки: ${cost}. Перекешовано ${times}.`,

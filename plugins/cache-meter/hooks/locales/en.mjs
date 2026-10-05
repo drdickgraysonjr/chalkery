@@ -7,14 +7,16 @@ export default {
   times: (n) => `${n} ${plural(n, 'time', 'times')}`,
   pings: (n) => `${n} ${plural(n, 'ping', 'pings')}`,
   ttlSource: { default: 'default', subscription: 'subscription', api: 'API', measured: 'measured', engine: 'from the engine', manual: 'set by hand for this session' },
-  // An amount in tokens, where dollars would not be real: on a subscription or for a model without prices
-  tok: (tokens) => `${tokens} tok`,
+  // An amount in tokens, where dollars would not be real: on a subscription or for a model without prices.
+  // Bare, as 200k: at these sizes tokens come in thousands, and no $ means they are not dollars
+  tok: (tokens) => tokens,
   apiEquivalent: (usd) => `API equivalent ${usd}`,
   unpricedModel: (model) => `${model}, prices unknown`,
   limit: { five_hour: '5 h', seven_day: 'week', spend_limit: 'spend' },
   onOff: (on) => (on ? 'on' : 'off'),
 
   // The band above the prompt
+  keptNoPings: (until) => `◆ Keeping the cache warm until ${until}`,
   kept: (until, pings, amount) => `◆ Keeping the cache warm until ${until}, ${pings} ${amount}`,
   warm: (left) => ` Cache warm for ${left}`,
   cooling: (left) => `◐ Cache cools in ${left}`,
@@ -38,6 +40,7 @@ export default {
   eachReads: (amount) => `reads ≈ ${amount}`,
   eachCosts: (usd) => `costs ≈ ${usd}`,
   notKeeping: (limits) => `Not keeping the cache warm: a plan limit is at 90% or more (${limits}), and each ping would use it further.`,
+  stoppedKeepingNoPings: (why) => `No longer keeping the cache warm: ${why}.`,
   stoppedKeeping: (why, pings, amount) => `No longer keeping the cache warm: ${why}. That was ${pings} for ${amount}.`,
   whyTimeUp: 'time is up',
   whyOff: 'turned off',
@@ -69,6 +72,7 @@ export default {
   statusUnknown: 'No request in this session yet, so the cache state is unknown.',
   statusWarm: (left) => `Cache warm for ≈ ${left}.`,
   statusCold: (ago, amount) => `The cache went cold ${ago} ago. The next message re-caches it: ≈ ${amount}.`,
+  statusKeptNoPings: (until) => `Keeping the cache warm until ${until}: no ping yet.`,
   statusKept: (until, pings, amount) => `Keeping the cache warm until ${until}: ${pings} so far, ≈ ${amount}.`,
   statusLimits: (text) => `Plan limits used: ${text}.`,
   statusCost: (cost, times) => `Session cost so far: ${cost}. Re-cached ${times}.`,
