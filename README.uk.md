@@ -101,4 +101,4 @@ claude plugin validate plugins/cache-meter && claude plugin test plugins/cache-m
 
 ## Ліцензії
 
-`handoff-relay`, `prompt-band` і спільний код: MIT, Yehor Hunia. `cache-meter` — форк кешової частини cache-keeper з [nateherkai/claude-code-mods](https://github.com/nateherkai/claude-code-mods), MIT, Nate Herk. `next-steps` — форк [anthropics/claude-plugins-community/next-steps](https://github.com/anthropics/claude-plugins-community/tree/main/next-steps), Apache 2.0. Ліцензія кожного мода лежить у його теці.
+`handoff-relay`, `primaries` і спільний код: MIT, Yehor Hunia. `cache-meter` — форк кешової частини cache-keeper з [nateherkai/claude-code-mods](https://github.com/nateherkai/claude-code-mods), MIT, Nate Herk. `next-steps` — форк [anthropics/claude-plugins-community/next-steps](https://github.com/anthropics/claude-plugins-community/tree/main/next-steps), Apache 2.0. Ліцензія кожного мода лежить у його теці.

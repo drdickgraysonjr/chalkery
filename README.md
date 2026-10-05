@@ -101,4 +101,4 @@ The band tests load the neighbouring mods as separate plugins in both orders. Th
 
 ## Licenses
 
-`handoff-relay`, `prompt-band` and the shared code: MIT, Yehor Hunia. `cache-meter` is a fork of the cache part of cache-keeper from [nateherkai/claude-code-mods](https://github.com/nateherkai/claude-code-mods), MIT, Nate Herk. `next-steps` is a fork of [anthropics/claude-plugins-community/next-steps](https://github.com/anthropics/claude-plugins-community/tree/main/next-steps), Apache 2.0. Each mod's license is in its folder.
+`handoff-relay`, `primaries` and the shared code: MIT, Yehor Hunia. `cache-meter` is a fork of the cache part of cache-keeper from [nateherkai/claude-code-mods](https://github.com/nateherkai/claude-code-mods), MIT, Nate Herk. `next-steps` is a fork of [anthropics/claude-plugins-community/next-steps](https://github.com/anthropics/claude-plugins-community/tree/main/next-steps), Apache 2.0. Each mod's license is in its folder.
