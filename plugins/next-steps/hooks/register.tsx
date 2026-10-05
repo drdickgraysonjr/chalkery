@@ -202,6 +202,18 @@ function usd(n: number): string {
   return `$${n.toFixed(0)}`
 }
 
+// As tokens() in cache-meter, for the amount on a subscription, where dollars are not real
+function tokens(n: number): string {
+  if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'M'
+  if (n >= 1e3) return (n / 1e3).toFixed(n >= 1e5 ? 0 : 1) + 'k'
+  return String(Math.round(n))
+}
+
+// The price of one press on a cold cache, in the unit cache-meter shows; dollars before cache-meter 0.3.0
+function coldPrice(cache: CacheMeterView): string {
+  return cache.unit === 'tokens' && cache.rewriteTokens ? L.tok(tokens(cache.rewriteTokens)) : usd(cache.rewriteUsd)
+}
+
 // Натиснуто «Що далі?»: питаємо fork і показуємо, що він запропонував.
 async function ask($: Engine, suggestsSkills: boolean): Promise<void> {
   if ((await read($, view)).kind !== 'ready') return
@@ -278,7 +290,7 @@ export const register: Register = (on, options) => {
       // Після паузи кеш міг охолонути: тоді fork перепише контекст. Пояснення стоїть у рядку
       // cache-meter, тут лише ціна саме цього натискання.
       const cache = await readCacheMeter($)
-      const price = cache?.kind === 'cold' && cache.isBig ? ` ≈ ${usd(cache.rewriteUsd)}` : null
+      const price = cache?.kind === 'cold' && cache.isBig ? ` ≈ ${coldPrice(cache)}` : null
       mine = (
         <Box key="next-steps-ask">
           <Button key="ask" label={L.ask} dimColor onPress={() => ask($, suggestsSkills)} />

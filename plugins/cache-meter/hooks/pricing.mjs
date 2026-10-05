@@ -34,6 +34,14 @@ export function normalizeModel(model) {
     .trim()
 }
 
+// The model's own row of the table, or null for a model the table does not list. A family
+// guess (opus-6 priced as opus-5-5) is null too: what it shows would be made up.
+export function knownPrice(model) {
+  const id = normalizeModel(model)
+  const row = TABLE.find(([key]) => id === key || id.startsWith(key + '-') || id.startsWith(key))
+  return row ? { id: row[0], ...row[1] } : null
+}
+
 export function priceFor(model) {
   const id = normalizeModel(model)
   for (const [key, price] of TABLE) {

@@ -2,6 +2,8 @@
 
 export default {
   ask: 'What next?',
+  // An amount in tokens, as cache-meter shows it on a subscription
+  tok: (tokens) => `${tokens} tok`,
   dismiss: 'Hide',
   loading: 'What next: thinking…',
   nothing: 'What next: the model has nothing to suggest',

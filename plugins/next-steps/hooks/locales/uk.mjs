@@ -2,6 +2,8 @@
 
 export default {
   ask: 'Що далі?',
+  // An amount in tokens, as cache-meter shows it on a subscription
+  tok: (tokens) => `${tokens} ток.`,
   dismiss: 'Сховати',
   loading: 'Що далі: підбираю…',
   nothing: 'Що далі: модель не має що запропонувати',

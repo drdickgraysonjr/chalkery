@@ -14,6 +14,9 @@ export type CacheMeterView = {
   kind: 'unknown' | 'warm' | 'cooling' | 'cold' | 'kept'
   isBig: boolean
   rewriteUsd: number
+  // Since cache-meter 0.3.0: the tokens a re-cache writes, and whether to show them instead of dollars
+  rewriteTokens?: number
+  unit?: 'usd' | 'tokens'
 }
 
 declare module 'claude-code' {
