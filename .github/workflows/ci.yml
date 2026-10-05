@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Mondays at 06:00 UTC: the same checks on the newest Claude Code.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      claude_code:
+        description: Claude Code version to check against (a version number or latest)
+        default: latest
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The oldest Claude Code the README promises. Pushes and pull requests check against it.
+  MIN_CLAUDE_CODE: 2.1.289
+  DISABLE_AUTOUPDATER: 1
+  CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: 1
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The version check compares each mod with its last release tag.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Claude Code
+        env:
+          VERSION: ${{ github.event_name == 'schedule' && 'latest' || inputs.claude_code || env.MIN_CLAUDE_CODE }}
+        run: |
+          npm install -g "@anthropic-ai/claude-code@$VERSION"
+          claude --version
+
+      - name: README names the version CI checks against
+        run: |
+          grep -q "Claude Code $MIN_CLAUDE_CODE or newer" README.md
+          grep -q "Claude Code $MIN_CLAUDE_CODE " README.uk.md
+
+      - name: Run checks
+        run: scripts/check.sh
+
+      - name: primaries installs from GitHub
+        if: github.event_name != 'pull_request'
+        run: scripts/trial-install.sh "${{ github.repository }}"
