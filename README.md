@@ -8,11 +8,17 @@ Three Claude Code mods that draw a band above the prompt, in the terminal and in
 
 | Mod | What it does |
 | --- | --- |
-| `handoff-relay` | A Handoff button that runs `/handoff`. It lights up from 180k tokens of context. The mod brings its own `handoff` skill, so the button works out of the box. |
-| `cache-meter` | Shows how long the prompt cache stays warm and what a re-cache would cost. Keep warm stops it from going cold. Before you send into a big cold cache, it asks first. |
-| `next-steps` | A What next? button that suggests up to three next prompts. The one you pick becomes a draft in the input box; you press Enter. |
+| [`handoff-relay`](plugins/handoff-relay) | A Handoff button that runs `/handoff`. It lights up from 180k tokens of context. The mod brings its own `handoff` skill, so the button works out of the box. |
+| [`cache-meter`](plugins/cache-meter) | Shows how long the prompt cache stays warm and what a re-cache would cost. Keep warm stops it from going cold. Before you send into a big cold cache, it asks first. |
+| [`next-steps`](plugins/next-steps) | A What next? button that suggests up to three next prompts. The one you pick becomes a draft in the input box; you press Enter. |
 
 Install them one by one or all at once. In any combination they form one band, always in the same order: Handoff, cache, What next?
+
+## Requirements
+
+Claude Code 2.1.289 or newer. The mods are built on function hooks, a recent part of Claude Code, and are tested on 2.1.289. Older versions may refuse to load them: 2.1.96, for example, rejects their manifests.
+
+Check your version with `claude --version` and update with `claude update`. The desktop app updates itself.
 
 ## Install
 
@@ -69,6 +75,18 @@ After install the CLI says that some options are not set. All of them have defau
 | `language` | `auto` | `auto`, `en` or `uk`, as above |
 | `minAnswerChars` | `80` | No button after shorter answers |
 | `suggestSkills` | `true` | A suggestion may be one of the session's skills or slash commands |
+
+## Troubleshooting
+
+**`Unrecognized key: "options"` or `invalid manifest file`.** Your Claude Code is older than the mods need. Run `claude update`, then install again.
+
+**`primaries` says `Dependency "handoff-relay@chalkery" is not found in any configured marketplace`.** The marketplace is most likely fine: one of the mods failed to install, and the pack reports it this way. Install that mod on its own to see the real error:
+
+```bash
+claude plugin install handoff-relay@chalkery
+```
+
+Most often it is the old-version error above.
 
 ## For authors
 
