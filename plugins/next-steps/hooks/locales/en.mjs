@@ -2,8 +2,9 @@
 
 export default {
   ask: 'What next?',
-  // An amount in tokens, as cache-meter shows it on a subscription
-  tok: (tokens) => `${tokens} tok`,
+  // An amount in tokens, as cache-meter shows it on a subscription.
+  // Bare, as 200k: at these sizes tokens come in thousands, and no $ means they are not dollars
+  tok: (tokens) => tokens,
   dismiss: 'Hide',
   loading: 'What next: thinking…',
   nothing: 'What next: the model has nothing to suggest',

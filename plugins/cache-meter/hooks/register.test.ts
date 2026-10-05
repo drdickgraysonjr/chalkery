@@ -215,13 +215,13 @@ for (const surface of SURFACES) {
       // Усі частини, кнопку теж, розділяє та сама сіра паличка; зелена лише крапка; з великої
       const band = await ui.find({ key: 'cache-meter' })
       expect(band?.props.columnGap).toBe(1)
-      expect(band?.text).toContain('● Кеш теплий ще 60 хв│Перекешування коштуватиме ≈ 200k ток.│')
+      expect(band?.text).toContain('● Кеш теплий ще 60 хв│Перекешування коштуватиме ≈ 200k│')
       const bars = await ui.findAll({ text: /^│$/ })
       expect(bars).toHaveLength(2)
       for (const bar of bars) expect(bar.props.dimColor).toBe(true)
       expect((await ui.find({ text: /^●$/ }))?.props.color).toBe('green')
       expect((await ui.find({ text: /^ Кеш теплий ще 60 хв$/ }))?.props.dimColor).toBe(true)
-      expect(await ui.find({ text: /^Перекешування коштуватиме ≈ 200k ток\.$/ })).toBeDefined()
+      expect(await ui.find({ text: /^Перекешування коштуватиме ≈ 200k$/ })).toBeDefined()
       // Тримати теплим видно завжди, поки кеш теплий; тихо, бо час ще є. Справжня кнопка, як Handoff:
       // без plain, а літера лише в терміналі (десктоп малює її фішкою перед підписом)
       const keep = await ui.find({ key: 'keepwarm' })
@@ -264,7 +264,7 @@ for (const surface of SURFACES) {
       const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
 
       const text = (await ui.find({ key: 'cache-meter' }))?.text ?? ''
-      expect(text).toContain('● Кеш теплий ще 60 хв│Перекешування коштуватиме ≈ 108k ток.')
+      expect(text).toContain('● Кеш теплий ще 60 хв│Перекешування коштуватиме ≈ 108k')
       expect(text).not.toContain('контекст')
       expect(text).not.toContain('сесія')
       expect(text).not.toContain('Ліміти')
@@ -321,7 +321,7 @@ for (const surface of SURFACES) {
       expect(await ui.find({ text: /^○ Кеш охолов 1 хв тому$/ })).toBeDefined()
       // Охололий кеш тримати вже нічого
       expect(await ui.find({ key: 'keepwarm' })).toBeUndefined()
-      const rewrite = await ui.find({ text: /^Наступне повідомлення перекешує ≈ 200k ток\.$/ })
+      const rewrite = await ui.find({ text: /^Наступне повідомлення перекешує ≈ 200k$/ })
       expect(rewrite).toBeDefined()
       expect(rewrite?.props.color).toBe('red')
     })
@@ -337,7 +337,7 @@ for (const surface of SURFACES) {
       expect(w.forks.length).toBe(1)
       const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
 
-      expect(await ui.find({ text: /^◆ Тримаю кеш теплим до \d{1,2}:\d\d, 1 пінг 200k ток\.$/ })).toBeDefined()
+      expect(await ui.find({ text: /^◆ Тримаю кеш теплим до \d{1,2}:\d\d, 1 пінг 200k$/ })).toBeDefined()
       const keep = await ui.find({ key: 'keepwarm' })
       expect(keep?.props.label).toBe('Не тримати')
       // Цифри лишаються за пропозиціями next-steps; на десктопі літери немає
@@ -444,7 +444,7 @@ for (const surface of SURFACES) {
     await w.clk.advance(53 * MIN)
     expect(w.forks.length).toBe(2)
     const kept = (await $.command.run({ command: 'cache', ...typed })) as { text: string }
-    expect(kept.text).toMatch(/поки що 2 пінги, ≈ 400k ток\. \(API-еквівалент \$0\.\d\d\)/)
+    expect(kept.text).toMatch(/поки що 2 пінги, ≈ 400k \(API-еквівалент \$0\.\d\d\)/)
     expect(kept.text).toContain('кеш живе 60 хв (підписка)')
 
     await $.command.run({ command: 'keepwarm', args: 'off', ...typed })
@@ -457,7 +457,7 @@ for (const surface of SURFACES) {
     w.setWrite(200_000)
     await step($)
     const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
-    expect(await ui.find({ text: /^Перекешовано 1 раз: 200k ток\.$/ })).toBeDefined()
+    expect(await ui.find({ text: /^Перекешовано 1 раз: 200k$/ })).toBeDefined()
   })
 }
 
@@ -469,7 +469,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     await step($)
     const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
     expect(await ui.find({ text: /^ Cache warm for 60 min$/ })).toBeDefined()
-    expect(await ui.find({ text: /^Re-caching would cost ≈ 200k tok$/ })).toBeDefined()
+    expect(await ui.find({ text: /^Re-caching would cost ≈ 200k$/ })).toBeDefined()
     expect((await ui.find({ key: 'keepwarm' }))?.props.label).toBe('Keep warm')
     expect(await ui.find({ text: /Кеш/ })).toBeUndefined()
   })
@@ -566,16 +566,16 @@ for (const surface of SURFACES) {
     await step($)
     const ui = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'AbovePrompt', props })
     const band = (await ui.find({ key: 'cache-meter' }))?.text ?? ''
-    expect(band).toContain('Перекешування коштуватиме ≈ 200k ток.')
+    expect(band).toContain('Перекешування коштуватиме ≈ 200k│')
     expect(band).not.toContain('$')
     // The cooling toast
     await w.clk.advance(56 * MIN)
     const cooling = w.toasts.find((t) => t.startsWith('Кеш на 200k токенів охолоне'))
-    expect(cooling).toContain('Перекешування коштуватиме ≈ 200k ток.')
+    expect(cooling).toContain('Перекешування коштуватиме ≈ 200k. Набери')
     // The footer once the big cache is cold
     await w.clk.advance(5 * MIN)
     const footer = await $.ui.mount({ plugin: 'cache-meter', surface, component: 'SessionMode', props: { modes: [] } as never })
-    expect(await footer.find({ text: /^кеш охолов, перекешування коштуватиме ≈ 200k ток\.$/ })).toBeDefined()
+    expect(await footer.find({ text: /^кеш охолов, перекешування коштуватиме ≈ 200k$/ })).toBeDefined()
     expect(w.toasts.join('\n')).not.toContain('$')
   })
 }
@@ -595,7 +595,7 @@ test('units: an unpriced model shows tokens and no dollars, even in /cache', { p
   await step($)
   const ui = await $.ui.mount({ plugin: 'cache-meter', surface: 'terminal', component: 'AbovePrompt', props })
   const band = (await ui.find({ key: 'cache-meter' }))?.text ?? ''
-  expect(band).toContain('Перекешування коштуватиме ≈ 200k ток.')
+  expect(band).toContain('Перекешування коштуватиме ≈ 200k│')
   const text = await cache($)
   expect(text).toContain('модель opus-6, ціни невідомі')
   expect(text).not.toContain('$')
@@ -608,7 +608,7 @@ test('units: /cache on a subscription labels dollars as the API equivalent', asy
   await step($)
   await w.clk.advance(61 * MIN)
   const text = await cache($)
-  expect(text).toMatch(/перекешує його: ≈ 200k ток\. \(API-еквівалент \$1\.60\)/)
+  expect(text).toMatch(/перекешує його: ≈ 200k \(API-еквівалент \$1\.60\)/)
   expect(text).toContain('Вартість сесії поки: API-еквівалент $3.20')
   expect(text.split('\n').filter((l) => l.includes('$') && !l.includes('API-еквівалент'))).toEqual([])
 })
@@ -620,7 +620,7 @@ test('units: the cold-send question on a subscription has no dollars', async ($,
   await w.clk.advance(61 * MIN)
   const r = (await submit($)) as { drop?: string }
   expect(w.asked[0].question).toBe('Кеш охолов 1 хв тому. Якщо надіслати зараз, 200k токенів контексту запишуться в кеш заново. Що робимо?')
-  expect(r.drop).toContain('перекешує контекст (≈ 200k ток.)')
+  expect(r.drop).toContain('перекешує контекст (≈ 200k)')
 })
 
 // Keep warm: what it will use, said up front; it stops before the plan limits run out
@@ -630,11 +630,24 @@ test('keep warm: the start toast estimates pings and what each reads', async ($,
   await step($)
   await $.command.run({ command: 'keepwarm', ...typed })
   // 4 hours at one ping every 52 minutes
-  expect(w.toasts.at(-1)).toMatch(/^Тримаю кеш теплим до \d{1,2}:\d\d: ≈ 4 пінги, кожен читає ≈ 200k ток\.$/)
+  expect(w.toasts.at(-1)).toMatch(/^Тримаю кеш теплим до \d{1,2}:\d\d: ≈ 4 пінги, кожен читає ≈ 200k\.$/)
   // Half an hour ends before the first ping is due: no estimate of pings that never go out
   await $.command.run({ command: 'keepwarm', args: 'off', ...typed })
   await $.command.run({ command: 'keepwarm', args: '0.5', ...typed })
   expect(w.toasts.at(-1)).toMatch(/^Тримаю кеш теплим до \d{1,2}:\d\d: стільки він протримається й без пінгу\.$/)
+})
+
+test('keep warm: before the first ping nothing counts zero pings', async ($, on) => {
+  const w = world($, on)
+  await start($)
+  await step($)
+  await $.command.run({ command: 'keepwarm', ...typed })
+  const ui = await $.ui.mount({ plugin: 'cache-meter', surface: 'terminal', component: 'AbovePrompt', props })
+  expect(await ui.find({ text: /^◆ Тримаю кеш теплим до \d{1,2}:\d\d$/ })).toBeDefined()
+  expect(await cache($)).toMatch(/Тримаю кеш теплим до \d{1,2}:\d\d: пінгів ще не було\./)
+  await $.command.run({ command: 'keepwarm', args: 'off', ...typed })
+  expect(w.toasts.at(-1)).toBe('Більше не тримаю кеш теплим: вимкнено.')
+  expect(w.toasts.join('\n')).not.toMatch(/\b0 пінг/)
 })
 
 test('keep warm: stops when a plan limit reaches 90%', async ($, on) => {
@@ -647,7 +660,7 @@ test('keep warm: stops when a plan limit reaches 90%', async ($, on) => {
   expect(w.forks.length).toBe(1)
   await $.session.measure({ context: { tokens: 200_010, window: 1_000_000 }, rateLimits: [{ kind: 'five_hour', percentUsed: 91 }], changed: ['rateLimits'] } as never)
   await w.clk.advance(1 * MIN)
-  expect(w.toasts.at(-1)).toBe('Більше не тримаю кеш теплим: ліміт плану дійшов до 90% (5 год 91%). Було 1 пінг на 200k ток.')
+  expect(w.toasts.at(-1)).toBe('Більше не тримаю кеш теплим: ліміт плану дійшов до 90% (5 год 91%). Було 1 пінг на 200k.')
   await w.clk.advance(60 * MIN)
   expect(w.forks.length).toBe(1)
 })

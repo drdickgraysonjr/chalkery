@@ -289,7 +289,7 @@ for (const surface of SURFACES) {
       const cold = { kind: 'cold', isBig: true, rewriteUsd: 1.6, rewriteTokens: 200_010 }
       await $.command.run({ command: 'set-cache', args: JSON.stringify({ ...cold, unit: 'tokens' }), ...typed } as never)
       const subscription = await $.ui.mount({ plugin: 'next-steps', surface, component: 'AbovePrompt', props })
-      expect(await subscription.find({ text: /^ ≈ 200k ток\.$/ })).toBeDefined()
+      expect(await subscription.find({ text: /^ ≈ 200k$/ })).toBeDefined()
       expect(await subscription.find({ text: /\$/ })).toBeUndefined()
 
       await $.command.run({ command: 'set-cache', args: JSON.stringify({ ...cold, unit: 'usd' }), ...typed } as never)
