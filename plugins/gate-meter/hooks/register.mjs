@@ -30,6 +30,8 @@ const BAR_CELLS = 15
 const GREEN_AT = 0.75
 // Bound scopes drawn at most; the Stop hook enforces none when there are several
 const MAX_ROWS = 3
+// A gate name longer than this may not fit its line in the pane; opened, the gate repeats it whole
+const LONG_NAME = 40
 // The details pane in the side panel, and which gates are open in it
 const PANE = 'gate-meter'
 
@@ -447,10 +449,12 @@ function statusOf(c) {
 // One gate opened in the pane: what the outcome is and where it stands; how it is checked one press further
 function detailsOf($, e, view, c, open, toggle) {
   const { Box, Text, Button } = $.ui.resolve(e)
-  const { rest } = splitTitle(c.title)
+  const { name, rest } = splitTitle(c.title)
   const id = `${view.scope}/${c.qid}`
   const parts = []
-  if (rest) parts.push(Text({ wrap: 'wrap', children: [rest] }))
+  // A title without a short lead is cut in its line: opened, it reads whole
+  const body = rest || (name.length > LONG_NAME ? name : '')
+  if (body) parts.push(Text({ wrap: 'wrap', children: [body] }))
   parts.push(Text({ wrap: 'wrap', dimColor: true, children: [statusOf(c)] }))
   if (c.check) {
     const howOpen = open.has(`${id}#how`)
@@ -512,14 +516,14 @@ function paneOf($, e, scopes, expanded) {
       const isOpen = open.has(id)
       const mark = c.state === 'met' ? '✓' : c.state === 'abandoned' ? '×' : '○'
       const head = `${isOpen ? '▾' : '▸'} ${mark} ${label(view, c)}  `
-      const row = [Button({
-        key: `gate:${id}`,
-        label: head + clip(splitTitle(c.title).name, Math.max(8, columns - head.length)),
-        plain: true,
-        // What is done steps back; what is left stays at full strength
-        ...(c.state === 'met' ? { dimColor: true } : {}),
-        onPress: () => toggle(id),
-      })]
+      // What is done steps back; what is left stays at full strength
+      const dim = c.state === 'met' ? { dimColor: true } : {}
+      const name = splitTitle(c.title).name
+      // The terminal's cells are the pane's real width, so the name is cut to them there. The desktop
+      // sets it in a proportional font a cell count says little about: it gets the whole name and
+      // fits it to the width the person gave the pane
+      const fit = e.surface === 'terminal' ? clip(name, Math.max(8, columns - head.length)) : name
+      const row = [Button({ key: `gate:${id}`, label: head + fit, plain: true, ...dim, onPress: () => toggle(id) })]
       if (isOpen) row.push(detailsOf($, e, view, c, open, toggle))
       return row
     }

@@ -653,14 +653,18 @@ for (const surface of SURFACES) {
       expect(body).toContain(`Набір: ${SCOPE_DIR}/GATES.md`)
     })
 
-    test('pane layout width: a long name is cut so the gate line fits bodyColumns', async ($, on) => {
+    test('pane layout width: the terminal cuts a long name to its cells, the desktop leaves it whole; opened, it reads whole on both', async ($, on) => {
       const long = 'y'.repeat(300)
       world($, on, { files: bound(ledger(3, 1).replace('outcome number 2 of the demo scope', long)), checker: checkerSays(3, [{ qid: 'GATES:G2', title: long }, ...openFrom(3, 3)]) })
       await start($)
       const ui = await pane($, surface)
       const label = String((await ui.find({ key: 'gate:demo/GATES:G2' }))?.props.label)
-      expect(label.length).toBeLessThanOrEqual(paneProps.bodyColumns)
-      expect(label).toMatch(/y…$/)
+      if (surface === 'terminal') {
+        expect(label.length).toBeLessThanOrEqual(paneProps.bodyColumns)
+        expect(label).toMatch(/y…$/)
+      } else expect(label).toBe('▸ ○ G2  Y' + 'y'.repeat(299))
+      await ui.press({ key: 'gate:demo/GATES:G2' })
+      expect((await ui.find({ key: 'details:GATES:G2' }))?.text).toContain('Y' + 'y'.repeat(299))
     })
 
     test('gate story short title: the lead before the colon, capitalised, names the gate; the rest, without backticks, opens below', async ($, on) => {
