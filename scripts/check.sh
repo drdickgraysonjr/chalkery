@@ -27,7 +27,7 @@ validate_all() {
 
 test_mods() {
   status=0
-  for mod in handoff-relay cache-meter next-steps; do
+  for mod in handoff-relay cache-meter next-steps gate-meter; do
     claude plugin test "plugins/$mod" || status=1
   done
   return $status

@@ -7,13 +7,13 @@
 // documented: it depends on how and in what order they were installed. So a mod does not
 // put its row "above" or "below" whatever came from further down; it places it in a shared
 // column by its own slot. Whoever is on top of the chain, the band comes out the same:
-// Handoff, cache, "What next?".
+// Handoff, cache, "What next?", then the /unlazy gates.
 
 export const BAND = 'prompt-band'
 const ROW = 'prompt-band-row:'
 
 // A row's slot in the band. Anything foreign (the engine's row or a mod from elsewhere) goes below ours.
-export const PLACE = { 'handoff-relay': 10, 'cache-meter': 20, 'next-steps': 30 }
+export const PLACE = { 'handoff-relay': 10, 'cache-meter': 20, 'next-steps': 30, 'gate-meter': 40 }
 const FOREIGN = 999
 
 /** @param {any} row */
@@ -35,7 +35,7 @@ function rowsOf(Box, below) {
 // The band with mod `name`'s row in its slot. Half a line between rows: a whole one looks like an empty paragraph.
 /**
  * @param {(props: any) => any} Box the column from the surface's table, $.ui.resolve(e).Box
- * @param {'handoff-relay' | 'cache-meter' | 'next-steps'} name
+ * @param {'handoff-relay' | 'cache-meter' | 'next-steps' | 'gate-meter'} name
  * @param {any} mine this mod's row
  * @param {any} below what next(e) returned
  * @returns {any}

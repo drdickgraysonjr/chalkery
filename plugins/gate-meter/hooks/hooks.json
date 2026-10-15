@@ -1,0 +1,4 @@
+{
+  "description": "Gate Meter hooks module",
+  "modules": ["./register.mjs"]
+}
