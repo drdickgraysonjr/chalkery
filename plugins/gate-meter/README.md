@@ -9,7 +9,7 @@ For sessions that work under [/unlazy](https://github.com/Leonxlnx/unlazy), the 
 A row appears only when an `/unlazy` scope is bound to this session (`gate-check --bind`). Without a binding the mod draws nothing.
 
 ```
-Gates ■■■■■■■■■□□□ 9 of 12 │ ● Waiting for a decision │ Details
+Gates ■■■■■■■■■□□□ 9 of 12 │ • Waiting for a decision │ Details
 Gates ◕ 22 of 23 95% │ Details
 ```
 
@@ -20,11 +20,11 @@ Gates ◕ 22 of 23 95% │ Details
 
 | Dot | Words | When |
 | --- | --- | --- |
-| yellow `●` | Waiting for a decision | `BLOCKED.md` is there: a large repair stopped the work |
-| red `●` | Regressed G3, G5 | a gate that was met broke on `pause.mjs resume` |
+| yellow `•` | Waiting for a decision | `BLOCKED.md` is there: a large repair stopped the work |
+| red `•` | Regressed G3, G5 | a gate that was met broke on `pause.mjs resume` |
 | dim `◌` | Paused (dim) | this session paused after the human typed `/handoff` |
 | none | 2 abandoned (dim) | the ledger has `ABANDON` lines |
-| green `●` | All met (dim) | every gate is met |
+| green `•` | All met (dim) | every gate is met |
 
 When the row is too narrow, the dim counts give way first; the dotted states stay. Which gate is open next is not repeated in the row, the count already says how many are left: it is in the pane.
 

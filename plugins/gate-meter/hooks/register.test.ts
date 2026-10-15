@@ -371,7 +371,7 @@ for (const surface of SURFACES) {
       world($, on, { files: bound(ledger(9, 9)), checker: checkerSays(9, []) })
       await start($)
       const ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
-      expect(await rowText(ui)).toBe('Гейти' + '■'.repeat(9) + '9 з 9│●Усі закрито│Деталі')
+      expect(await rowText(ui)).toBe('Гейти' + '■'.repeat(9) + '9 з 9│•Усі закрито│Деталі')
             expect((await dotOf(ui, 'done'))?.props?.color).toBe('green')
       const words = await wordsOf(ui, 'done')
       expect(words?.props.dimColor).toBe(true)
@@ -395,7 +395,7 @@ for (const surface of SURFACES) {
       world($, on, { files: bound(ledger(4, 3), { [`${SCOPE_DIR}/BLOCKED.md`]: 'SESSION: session-1\n' }), checker: checkerSays(4, openFrom(4, 4)) })
       await start($)
       const ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
-      expect(await rowText(ui)).toContain('3 з 4│●Очікує на рішення│Деталі')
+      expect(await rowText(ui)).toContain('3 з 4│•Очікує на рішення│Деталі')
             expect((await dotOf(ui, 'blocked'))?.props?.color).toBe('yellow')
       const words = await wordsOf(ui, 'blocked')
       expect(words?.props?.color).toBeUndefined()
@@ -421,7 +421,7 @@ for (const surface of SURFACES) {
       const ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
       const red = await ui.findAll({ text: /^□$/ })
       expect(red.filter((c: any) => c.props.color === 'red')).toHaveLength(1)
-      expect(await rowText(ui)).toContain('1 з 4│●Регресія G2│Деталі')
+      expect(await rowText(ui)).toContain('1 з 4│•Регресія G2│Деталі')
             expect((await dotOf(ui, 'regressed'))?.props?.color).toBe('red')
       expect((await wordsOf(ui, 'regressed'))?.props?.color).toBeUndefined()
     })
@@ -449,7 +449,7 @@ for (const surface of SURFACES) {
         const text = (await rowText(ui)) ?? ''
         const bars = (await ui.findAll({ text: /^│$/ })).length
         // The text, a space each side of every bar, a space after each dot, the terminal's hotkey mark
-        const dots = (await ui.findAll({ text: /^[●◌]$/ })).length
+        const dots = (await ui.findAll({ text: /^[•◌]$/ })).length
         expect(text.length + bars * 2 + dots + (surface === 'terminal' ? 4 : 0)).toBeLessThanOrEqual(columns)
         expect(await ui.find({ key: 'state:blocked' })).toBeDefined()
         expect(await ui.find({ key: 'state:regressed' })).toBeDefined()
