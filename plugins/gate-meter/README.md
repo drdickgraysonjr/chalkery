@@ -19,7 +19,9 @@ Gates alerts-mvp ■■■■■■■■□□□□ 8 of 12 │ Next G9: the d
 
 Colour is only for what needs a look: yellow for a stop or an abandonment, red for a regression, green for the finished dot. Everything else is dim.
 
-`/gates` lists every gate with `✓`, `○` or `×`, why an open one is open, and where the ledger is. If another plugin already has `/gates`, the command is `/gm-gates`.
+**Details**, a dim button at the end of the row (`g` in the terminal), opens a pane in the side panel and closes it again. The pane has the ledger's heading and Scope, the count and where it comes from, then one line per gate; met gates step back, open ones stay at full strength. A press on a gate opens its full title, `CHECK`, `EXPECT`, `CWD`, its evidence and why it is still open; Expand all and Collapse all do the whole list.
+
+`/gates` lists every gate with `✓`, `○` or `×` as text, why an open one is open, and where the ledger is. If another plugin already has `/gates`, the command is `/gm-gates`.
 
 ## Where the numbers come from
 
