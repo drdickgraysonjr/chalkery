@@ -207,3 +207,41 @@ export function clip(text, max) {
   if (max <= 1) return s.slice(0, Math.max(0, max))
   return s.length <= max ? s : s.slice(0, max - 1).trimEnd() + '…'
 }
+
+const capital = (s) => s.charAt(0).toLocaleUpperCase() + s.slice(1)
+// Inline code marks say nothing to a person reading the pane
+const plain = (s) => String(s).replace(/`([^`]*)`/g, '$1').replace(/\s+/g, ' ').trim()
+// A gate title's lead before its first colon is its name when it is this short
+const MAX_NAME = 60
+
+/**
+ * A gate title as a short name and the rest of its sentence: the part before the first colon when
+ * there is a short one, capitalised, and what follows it; without one, the whole title and no rest.
+ * @param {string} title
+ */
+export function splitTitle(title) {
+  const text = plain(title)
+  const at = text.search(/:\s/)
+  if (at > 0 && at <= MAX_NAME && !/[(«"]/.test(text.slice(0, at))) {
+    return { name: capital(text.slice(0, at).trim()), rest: capital(text.slice(at + 1).trim()) }
+  }
+  return { name: capital(text), rest: '' }
+}
+
+/**
+ * The first sentence of the option BLOCKED.md recommends: what the stop is waiting for, in its own words.
+ * @param {string} text
+ */
+export function bestOption(text) {
+  const lines = String(text).split(/\r?\n/)
+  const at = lines.findIndex((l) => /^##\s+(Найкращий варіант|Best option)\s*$/i.test(l))
+  if (at < 0) return ''
+  const body = []
+  for (const line of lines.slice(at + 1)) {
+    if (/^##\s/.test(line)) break
+    if (line.trim()) body.push(line.trim())
+  }
+  const para = plain(body.join(' '))
+  const first = para.match(/^.+?[.!?](?=\s|$)/)
+  return first ? first[0] : para
+}
