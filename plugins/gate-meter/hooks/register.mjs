@@ -26,6 +26,8 @@ const TICK_EVERY = 15000
 // From this many gates the row draws one pie that fills by the share met, and the percentage,
 // instead of one cell per gate: a long ledger's cells would crowd the row
 const BAR_FROM = 15
+// The dot a state carries its colour in: small, so it does not outweigh the words or the pie
+const DOT = '•'
 // The pie's quarters: empty, a quarter, a half, three quarters, full
 const PIE = ['○', '◔', '◑', '◕', '●']
 // From this share of met gates the filled cells turn green: the end is near
@@ -338,15 +340,15 @@ function percentOf(view) {
 // `optional` ones give way first when the row is too narrow
 function statesOf(view) {
   const out = []
-  if (view.blocked) out.push({ key: 'blocked', dot: '●', dotStyle: { color: 'yellow' }, text: L.blocked, line: L.stateLine.blocked })
+  if (view.blocked) out.push({ key: 'blocked', dot: DOT, dotStyle: { color: 'yellow' }, text: L.blocked, line: L.stateLine.blocked })
   if (view.regressed.length) {
     const ids = view.regressed.map((qid) => shortId(view, qid))
-    out.push({ key: 'regressed', dot: '●', dotStyle: { color: 'red' }, ids, text: L.regressed(ids.join(', ')), line: L.regressedLine(ids.join(', ')) })
+    out.push({ key: 'regressed', dot: DOT, dotStyle: { color: 'red' }, ids, text: L.regressed(ids.join(', ')), line: L.regressedLine(ids.join(', ')) })
   }
   if (view.paused && !view.blocked) out.push({ key: 'paused', dot: '◌', dotStyle: { dimColor: true }, text: L.paused, line: L.stateLine.paused, dim: true })
   if (view.abandoned) out.push({ key: 'abandoned', text: L.abandoned(view.abandoned), dim: true, optional: true })
   if (view.blockers.length) out.push({ key: 'waves', text: L.waves(view.blockers.length), line: L.wavesLine(view.blockers.join('; ')), dim: true, optional: true })
-  if (view.unmet === 0 && view.abandoned === 0 && !view.blockers.length) out.push({ key: 'done', dot: '●', dotStyle: { color: 'green' }, text: L.allMet, line: L.allMetLine(view.total), dim: true })
+  if (view.unmet === 0 && view.abandoned === 0 && !view.blockers.length) out.push({ key: 'done', dot: DOT, dotStyle: { color: 'green' }, text: L.allMet, line: L.allMetLine(view.total), dim: true })
   return out
 }
 
