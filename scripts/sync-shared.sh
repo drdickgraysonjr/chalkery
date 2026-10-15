@@ -5,7 +5,7 @@
 set -e
 cd "$(dirname "$0")/.."
 status=0
-for mod in handoff-relay cache-meter next-steps; do
+for mod in handoff-relay cache-meter next-steps gate-meter; do
   for file in shared/*.mjs; do
     target="plugins/$mod/hooks/$(basename "$file")"
     if [ "$1" = "--check" ]; then

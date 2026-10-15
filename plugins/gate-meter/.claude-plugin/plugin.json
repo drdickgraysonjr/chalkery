@@ -1,0 +1,31 @@
+{
+  "name": "gate-meter",
+  "version": "0.1.0",
+  "description": "Progress of the /unlazy gates bound to this session, one quiet row above the prompt: cells per gate, met of total, the next open gate, paused or stopped. /gates lists them all. Joins handoff-relay, cache-meter and next-steps in one band.",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Yehor Hunia"
+  },
+  "license": "MIT",
+  "userConfig": {
+    "language": {
+      "type": "string",
+      "title": "Language / Мова",
+      "description": "auto follows Claude's response language from /config; en or uk set it explicitly. auto бере мову відповідей Claude з /config; en чи uk задають її явно.",
+      "required": false,
+      "default": "auto",
+      "options": [
+        "auto",
+        "en",
+        "uk"
+      ]
+    },
+    "checker": {
+      "type": "string",
+      "title": "unlazy checker / Перевірник unlazy",
+      "description": "Path to unlazy's scripts/gate-check.mjs, when it is not next to the Stop hook in settings or in ~/.claude/skills/unlazy. Шлях до scripts/gate-check.mjs, якщо він не поруч зі Stop-хуком у налаштуваннях і не в ~/.claude/skills/unlazy.",
+      "required": false,
+      "default": ""
+    }
+  }
+}

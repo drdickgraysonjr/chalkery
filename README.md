@@ -6,7 +6,7 @@ English | [Українська](README.uk.md)
 
 A chalkery is where the chalk lives: a home for Claude Code mods that draw above the prompt.
 
-Three Claude Code mods that draw a band above the prompt, in the terminal and in the desktop app's Code tab.
+Claude Code mods that draw a band above the prompt, in the terminal and in the desktop app's Code tab: three for every session, and a fourth for sessions under /unlazy.
 
 ![The band in the desktop app's Code tab: Handoff with the context size, the cache status with Keep warm, and What next?](docs/band-desktop-en.png)
 
@@ -19,8 +19,9 @@ Three Claude Code mods that draw a band above the prompt, in the terminal and in
 | [`handoff-relay`](plugins/handoff-relay) | A Handoff button that runs `/handoff`. It lights up from 180k tokens of context (the `threshold` option). Once the handoff document is written, the button gives way to "Handoff created". The mod brings its own `handoff` skill, so the button works out of the box. |
 | [`cache-meter`](plugins/cache-meter) | Shows how long the prompt cache stays warm and what a re-cache would cost. Keep warm stops it from going cold. Before you send into a big cold cache, it asks first. |
 | [`next-steps`](plugins/next-steps) | A What next? button that suggests up to three next prompts. The one you pick becomes a draft in the input box; you press Enter. |
+| [`gate-meter`](plugins/gate-meter) | For [/unlazy](https://github.com/Leonxlnx/unlazy): one quiet row with the progress of the gates bound to this session, a cell per gate, met of total and the next open one. `/gates` lists them all. Not in the pack. |
 
-Install them one by one or all at once. In any combination they form one band, always in the same order: Handoff, cache, What next?
+Install them one by one or all at once. In any combination they form one band, always in the same order: Handoff, cache, What next?, gates.
 
 ## Requirements
 
@@ -113,7 +114,7 @@ docs/                             the screenshots in the READMEs
 .github/workflows/ci.yml          CI: on every push and pull request, and weekly
 ```
 
-**The shared band.** The order in which the engine chains different plugins' `ui.render` hooks is not documented and depends on how they were installed. So a mod does not put its row above or below what `next(e)` returned. It places its row into the shared `prompt-band` column at its own spot: Handoff 10, cache 20, What next? 30. Anything foreign, such as the engine's own row or a mod from elsewhere, goes below them. A mod may be installed without its neighbours, so `band.mjs` and `i18n.mjs` are copied into each one. Edit `shared/`, then run `scripts/sync-shared.sh`; `scripts/sync-shared.sh --check` confirms the copies match.
+**The shared band.** The order in which the engine chains different plugins' `ui.render` hooks is not documented and depends on how they were installed. So a mod does not put its row above or below what `next(e)` returned. It places its row into the shared `prompt-band` column at its own spot: Handoff 10, cache 20, What next? 30, gates 40. Anything foreign, such as the engine's own row or a mod from elsewhere, goes below them. A mod may be installed without its neighbours, so `band.mjs` and `i18n.mjs` are copied into each one. Edit `shared/`, then run `scripts/sync-shared.sh`; `scripts/sync-shared.sh --check` confirms the copies match.
 
 **Languages.** A mod's code holds no text a person sees: it reads it from `locales/<language>.mjs`. A new language is one more file in each mod, a line in `LOCALES` and a pattern in `shared/i18n.mjs`. Each mod's tests check that every locale has the same keys.
 
@@ -134,7 +135,7 @@ The band tests load the neighbouring mods as separate plugins in both orders. Th
 **Release checklist.** CI does not see the band itself, so check by hand before tagging:
 
 1. `scripts/check.sh` passes.
-2. With the changed mods in `CLAUDE_CODE_PLUGIN_DIRS`, a new terminal session shows the band in order: Handoff, cache, What next?
+2. With the changed mods in `CLAUDE_CODE_PLUGIN_DIRS`, a new terminal session shows the band in order: Handoff, cache, What next?, gates
 3. The same in the desktop app's Code tab.
 4. Handoff runs `/handoff` and, once the document is written, gives way to "Handoff created" in the terminal too; What next? offers suggestions, and `/cache` shows the cache status.
 5. With `language` set to `uk` and then `en`, every label changes language.
@@ -142,4 +143,4 @@ The band tests load the neighbouring mods as separate plugins in both orders. Th
 
 ## Licenses
 
-`handoff-relay`, `primaries` and the shared code: MIT, Yehor Hunia. `cache-meter` is a fork of the cache part of cache-keeper from [nateherkai/claude-code-mods](https://github.com/nateherkai/claude-code-mods), MIT, Nate Herk. `next-steps` is a fork of [anthropics/claude-plugins-community/next-steps](https://github.com/anthropics/claude-plugins-community/tree/main/next-steps), Apache 2.0. Each mod's license is in its folder.
+`handoff-relay`, `gate-meter`, `primaries` and the shared code: MIT, Yehor Hunia. `cache-meter` is a fork of the cache part of cache-keeper from [nateherkai/claude-code-mods](https://github.com/nateherkai/claude-code-mods), MIT, Nate Herk. `next-steps` is a fork of [anthropics/claude-plugins-community/next-steps](https://github.com/anthropics/claude-plugins-community/tree/main/next-steps), Apache 2.0. Each mod's license is in its folder.
