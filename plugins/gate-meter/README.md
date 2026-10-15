@@ -9,17 +9,25 @@ For sessions that work under [/unlazy](https://github.com/Leonxlnx/unlazy), the 
 A row appears only when an `/unlazy` scope is bound to this session (`gate-check --bind`). Without a binding the mod draws nothing.
 
 ```
-Gates alerts-mvp ■■■■■■■■□□□□ 8 of 12 │ Next G9: the digest reaches the thread
+Gates ■■■■■■■■■□□□ 9 of 12 │ ● Waiting for a decision │ Details
 ```
 
-- One cell per gate in ledger order: filled when met, dim when open, a yellow `×` when abandoned, a red cell when a gate that was met broke on `pause.mjs resume`. A ledger of more than 30 gates gets a bar of 20 cells instead.
-- Met of total, then the first open gate with its title, cut to fit the width. When the gate's box is ticked but its evidence is pending or no longer matches its definition, the row says so in brackets.
-- The abandoned count. Where unlazy has a pause (its handoff-pause fork): `paused` after the human typed `/handoff`, `stopped, waiting for a decision` while `BLOCKED.md` is there, and the ids that regressed on resume.
-- When every gate is met: a green dot and one dim line, `Gates alerts-mvp: all 12 met`.
+- **Label.** `Gates` alone; when several scopes are bound to the session, each row names its own, `Gates alerts-mvp`.
+- **Cells.** One per gate in ledger order up to 14 gates: filled when met, dim when open, a yellow `×` when abandoned, a red cell when a gate that was met broke on `pause.mjs resume`. From 15 gates a bar of 15 steps, `█` and dim `░`, as cache-meter draws its bar. Once 75 % of the gates are met, the filled cells or steps turn green.
+- **Count.** Met of total. A `≈` before it means the unlazy checker could not be asked and the check boxes in the file decided.
+- **State**, after a bar, only when there is one. Colour is carried by the dot alone; the words stay plain or dim:
 
-Colour is only for what needs a look: yellow for a stop or an abandonment, red for a regression, green for the finished dot. Everything else is dim.
+| Dot | Words | When |
+| --- | --- | --- |
+| yellow `●` | Waiting for a decision | `BLOCKED.md` is there: a large repair stopped the work |
+| red `●` | Regressed G3, G5 | a gate that was met broke on `pause.mjs resume` |
+| dim `◌` | Paused (dim) | this session paused after the human typed `/handoff` |
+| none | 2 abandoned (dim) | the ledger has `ABANDON` lines |
+| green `●` | All met (dim) | every gate is met |
 
-**Details**, a dim button at the end of the row (`g` in the terminal), opens a pane in the side panel and closes it again. The pane has the ledger's heading and Scope, the count and where it comes from, then one line per gate; met gates step back, open ones stay at full strength. A press on a gate opens its full title, `CHECK`, `EXPECT`, `CWD`, its evidence and why it is still open; Expand all and Collapse all do the whole list.
+When the row is too narrow, the dim counts give way first; the dotted states stay. Which gate is open next is not repeated in the row, the count already says how many are left: it is in the pane.
+
+**Details**, a dim button at the end of the row (`g` in the terminal), opens a pane in the side panel and closes it again. The pane has the ledger's heading in bold, its Scope as an indented paragraph, the count and where it comes from, the states with the row's dots and the first open gate. Then one line per gate, the ids in a column of one width so the titles line up; met gates step back, open ones stay at full strength. A press on a gate opens its full title and its fields, each a dim name on a line above its value: `CHECK`, `EXPECT`, `CWD`, the evidence, why it is still open or why it was abandoned. Expand all and Collapse all do the whole list.
 
 `/gates` lists every gate with `✓`, `○` or `×` as text, why an open one is open, and where the ledger is. If another plugin already has `/gates`, the command is `/gm-gates`.
 
@@ -35,7 +43,7 @@ The mod joins [handoff-relay](../handoff-relay), [cache-meter](../cache-meter) a
 
 ## For other mods
 
-The mod publishes what it shows in `$.state` as `gate-meter.view` (see `types/index.d.ts`): the bound scopes with their counts, cells and the next open gate.
+The mod publishes what it shows in `$.state` as `gate-meter.view` (see `types/index.d.ts`): the bound scopes with their counts, cells, states and the first open gate.
 
 ## Options
 
