@@ -14,6 +14,21 @@ export default {
   blocked: 'зупинено, чекає рішення',
   regressed: (ids) => `регресія: ${ids}`,
   waves: (n) => `відкрито в диспетчері: ${n}`,
+  details: 'Деталі',
+
+  // Панель деталей
+  paneTitle: (scope) => `Гейти ${scope}`,
+  metOf: (met, total) => `Закрито ${met} з ${total}`,
+  sourceShort: { checker: 'за перевірником unlazy', boxes: 'за позначками у файлі' },
+  expandAll: 'Розгорнути все',
+  collapseAll: 'Згорнути все',
+  manualGate: 'Ручний гейт: вирішує людина',
+  evidenceName: 'Свідчення',
+  evidenceNone: 'ще немає',
+  evidenceAuto: (exit, matched) => `автоматичне: код виходу ${exit ?? '?'}, EXPECT ${matched ? 'збігся' : 'не збігся'}`,
+  whyOpen: 'Відкритий, бо',
+  reasonLong: { unchecked: 'ще не перевірено', pending: 'позначку поставлено, а свідчення немає', stale: 'свідчення не відповідає теперішньому визначенню' },
+  regressedShort: 'зламався після відновлення',
 
   // /gates
   gatesDescription: 'Гейти /unlazy цієї сесії: що закрито, а що ні',

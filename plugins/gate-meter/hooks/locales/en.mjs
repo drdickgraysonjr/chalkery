@@ -14,6 +14,21 @@ export default {
   blocked: 'stopped, waiting for a decision',
   regressed: (ids) => `regressed: ${ids}`,
   waves: (n) => `${n} open in dispatch`,
+  details: 'Details',
+
+  // The details pane
+  paneTitle: (scope) => `Gates ${scope}`,
+  metOf: (met, total) => `${met} of ${total} met`,
+  sourceShort: { checker: 'by the unlazy checker', boxes: 'by the check boxes in the file' },
+  expandAll: 'Expand all',
+  collapseAll: 'Collapse all',
+  manualGate: 'A manual gate: a person decides it',
+  evidenceName: 'Evidence',
+  evidenceNone: 'none yet',
+  evidenceAuto: (exit, matched) => `automatic: exit ${exit ?? '?'}, EXPECT ${matched ? 'matched' : 'did not match'}`,
+  whyOpen: 'Open because',
+  reasonLong: { unchecked: 'not checked yet', pending: 'the box is ticked but there is no evidence', stale: 'the evidence no longer matches the definition' },
+  regressedShort: 'broke on resume',
 
   // /gates
   gatesDescription: "This session's /unlazy gates: what is met and what is not",

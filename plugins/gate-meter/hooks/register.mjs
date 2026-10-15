@@ -14,7 +14,7 @@
 
 import { atom, read, update } from 'claude-code'
 import { joinBand } from './band.mjs'
-import { clip, parseChecker, parseLedgers, summarize } from './ledger.mjs'
+import { automaticEvidence, clip, parseChecker, parseHeader, parseLedgers, summarize } from './ledger.mjs'
 import { resolveLanguage, isLanguageKey } from './i18n.mjs'
 import en from './locales/en.mjs'
 import uk from './locales/uk.mjs'
@@ -30,6 +30,8 @@ const BAR_CELLS = 20
 const MIN_TITLE = 12
 // Bound scopes drawn at most; the Stop hook enforces none when there are several
 const MAX_ROWS = 3
+// The details pane in the side panel, and which gates are open in it
+const PANE = 'gate-meter'
 
 let L = en
 let language = 'auto'
@@ -51,6 +53,8 @@ async function pickLanguage($) {
 
 // What the band draws and other mods may read. Rewritten only when it changes.
 const VIEW = atom({ plugin: 'gate-meter', key: 'view' }, { scopes: [] })
+// Gates the person opened in the pane, as `<scope>/<qualified id>`; kept by the host across a reload
+const EXPANDED = atom({ plugin: 'gate-meter', key: 'expanded' }, [])
 let published = ''
 // Per scope: the fingerprint of its files at the last read, and what that read gave
 const seen = new Map()
@@ -204,8 +208,11 @@ async function scopeView($, root, scope) {
     }
   }
   const sum = summarize(gates, report, regressed)
+  const header = parseHeader(files[0].text)
   const view = {
     scope,
+    heading: header.heading,
+    scopeText: header.scope,
     root,
     path: join(dir, files[0].name),
     multiFile: files.length > 1,
@@ -214,7 +221,19 @@ async function scopeView($, root, scope) {
     met: sum.met,
     unmet: sum.unmet,
     abandoned: sum.abandoned,
-    cells: sum.cells.map((c) => ({ qid: c.qid, id: c.id, title: c.title, state: c.state, ...(c.reason ? { reason: c.reason } : {}), ...(c.regressed ? { regressed: true } : {}), ...(c.abandonReason !== undefined ? { abandonReason: c.abandonReason } : {}) })),
+    cells: sum.cells.map((c) => ({
+      qid: c.qid,
+      id: c.id,
+      title: c.title,
+      state: c.state,
+      check: c.check,
+      expect: c.expect,
+      cwd: c.cwd,
+      evidence: c.evidence,
+      ...(c.reason ? { reason: c.reason } : {}),
+      ...(c.regressed ? { regressed: true } : {}),
+      ...(c.abandonReason !== undefined ? { abandonReason: c.abandonReason } : {}),
+    })),
     next: sum.next ? { qid: sum.next.qid, id: sum.next.id, title: sum.next.title, reason: sum.next.reason || 'unchecked' } : null,
     regressed: sum.regressed,
     blockers: sum.blockers,
@@ -322,20 +341,49 @@ function partsOf(view, columns) {
   return { done: false, head, cells, count, tail }
 }
 
-function rowOf($, e, view) {
+// The pane's title: the scope when there is one, else the word
+function paneTitle(scopes) {
+  return scopes.length === 1 ? L.paneTitle(scopes[0].scope) : L.gates
+}
+
+// Opens the details pane, or closes it when it is already up
+async function togglePane($) {
+  const isUp = (await $.ui.panes()).some((pane) => pane.id === PANE)
+  if (isUp) return $.ui.close({ id: PANE })
+  const { scopes } = await read($, VIEW)
+  await $.ui.open({ id: PANE, title: paneTitle(scopes) })
+}
+
+// The quiet button at the end of the row; the letter only on the terminal, as cache-meter's
+function detailsButton($, e) {
+  const { Button } = $.ui.resolve(e)
+  const key = e.surface === 'terminal' ? { hotkey: 'g' } : {}
+  return Button({ key: 'details', label: L.details, dimColor: true, ...key, onPress: () => togglePane($).catch(() => {}) })
+}
+
+// What the button takes from the row's width: its label, the bar and its spaces, the terminal's hotkey mark
+function detailsWidth(e) {
+  return L.details.length + 3 + (e.surface === 'terminal' ? 3 : 0) + 4
+}
+
+function rowOf($, e, view, withButton) {
   const { Box, Text } = $.ui.resolve(e)
   const columns = Math.max(40, Number(e.props && e.props.bodyColumns) || 100)
-  const p = partsOf(view, columns)
+  const p = partsOf(view, columns - (withButton ? detailsWidth(e) : 0))
+  const bar = (i) => Text({ key: `bar${i}`, dimColor: true, children: ['│'] })
   if (p.done) {
     // All is well, so only the dot is green and the words stay dim
-    return Box({ key: `gate-meter:${view.scope}`, flexDirection: 'row', children: [Text({ color: 'green', children: ['●'] }), Text({ dimColor: true, children: [p.parts[0].text] })] })
+    const line = Box({ key: 'done', flexDirection: 'row', children: [Text({ color: 'green', children: ['●'] }), Text({ dimColor: true, children: [p.parts[0].text] })] })
+    const done = withButton ? [line, bar(1), detailsButton($, e)] : [line]
+    return Box({ key: `gate-meter:${view.scope}`, flexDirection: 'row', columnGap: 1, children: done })
   }
   const style = ({ text, ...rest }) => Text({ ...rest, children: [text] })
   const cells = Text({ key: 'cells', children: p.cells.map((c) => Text({ ...TONE[c], children: [MARK[c]] })) })
   const first = Box({ key: 'progress', flexDirection: 'row', columnGap: 1, children: [style(p.head[0]), cells, Text({ key: 'count', children: [p.count] })] })
   const parts = [first, ...p.tail.map((t, i) => style({ key: `tail${i}`, ...t }))]
+  if (withButton) parts.push(detailsButton($, e))
   // Each part is set off from the next by the same dim bar as the neighbours' rows
-  const row = parts.flatMap((part, i) => (i ? [Text({ key: `bar${i}`, dimColor: true, children: ['│'] }), part] : [part]))
+  const row = parts.flatMap((part, i) => (i ? [bar(i), part] : [part]))
   return Box({ key: `gate-meter:${view.scope}`, flexDirection: 'row', columnGap: 1, children: row })
 }
 
@@ -353,6 +401,76 @@ function listText(view) {
   if (view.blockers.length) after.push(L.wavesLine(view.blockers.join('; ')))
   after.push(L.where(view.path))
   return [...lines, '', ...after].join('\n')
+}
+
+// One gate's details, as the ledger has them: open in the pane on press
+function detailsOf($, e, view, c) {
+  const { Box, Text, Code } = $.ui.resolve(e)
+  const lines = []
+  const field = (key, name, value) => Box({ key, flexDirection: 'row', columnGap: 1, children: [Text({ dimColor: true, children: [name] }), Text({ children: [value] })] })
+  lines.push(Text({ key: 'title', children: [c.title] }))
+  if (c.check) {
+    lines.push(Text({ key: 'check-name', dimColor: true, children: ['CHECK'] }))
+    lines.push(Code({ key: 'check', source: c.check, language: 'sh' }))
+    lines.push(field('expect', 'EXPECT', c.expect || '—'))
+    if (c.cwd) lines.push(field('cwd', 'CWD', c.cwd))
+  } else lines.push(Text({ key: 'manual', dimColor: true, children: [L.manualGate] }))
+  const auto = automaticEvidence(c.evidence)
+  const ev = !c.evidence || c.evidence.toLowerCase() === 'pending' ? L.evidenceNone : auto ? L.evidenceAuto(auto.exit, auto.matched) : c.evidence
+  lines.push(field('evidence', L.evidenceName, ev))
+  if (c.state === 'unmet') lines.push(field('why', L.whyOpen, [c.regressed ? L.regressedShort : '', L.reasonLong[c.reason] || L.reasonLong.unchecked].filter(Boolean).join(', ')))
+  if (c.state === 'abandoned') lines.push(Text({ key: 'abandoned', color: 'yellow', children: [L.abandonedBecause(c.abandonReason || '')] }))
+  return Box({ key: `details:${c.qid}`, flexDirection: 'column', paddingLeft: 4, children: lines })
+}
+
+// The pane: each bound scope's heading, counts and state, then its gates, each one opening on press
+function paneOf($, e, scopes, expanded) {
+  const { Box, Text, Button } = $.ui.resolve(e)
+  const columns = Math.max(30, Number(e.props && e.props.bodyColumns) || 60)
+  if (!scopes.length) return Box({ key: 'gate-meter-pane', flexDirection: 'column', children: [Text({ dimColor: true, children: [L.noBinding] })] })
+  const open = new Set(expanded)
+  const toggle = (qid) => update($, EXPANDED, (list) => {
+    const next = new Set(list)
+    next.has(qid) ? next.delete(qid) : next.add(qid)
+    return [...next]
+  })
+  const blocks = scopes.map((view) => {
+    const rows = []
+    if (view.heading) rows.push(Text({ key: 'heading', bold: true, children: [view.heading] }))
+    if (view.scopeText) rows.push(Text({ key: 'scope', dimColor: true, children: [view.scopeText] }))
+    rows.push(Box({ key: 'count', flexDirection: 'row', columnGap: 1, children: [Text({ children: [L.metOf(view.met, view.total)] }), Text({ dimColor: true, children: [view.source === 'checker' ? L.sourceShort.checker : L.sourceShort.boxes] })] }))
+    if (view.blocked) rows.push(Text({ key: 'blocked', color: 'yellow', children: [L.stateLine.blocked] }))
+    else if (view.paused) rows.push(Text({ key: 'paused', dimColor: true, children: [L.stateLine.paused] }))
+    if (view.regressed.length) rows.push(Text({ key: 'regressed', color: 'red', children: [L.regressedLine(view.regressed.join(', '))] }))
+    if (view.blockers.length) rows.push(Text({ key: 'waves', dimColor: true, children: [L.wavesLine(view.blockers.join('; '))] }))
+    const ids = view.cells.map((c) => `${view.scope}/${c.qid}`)
+    const allOpen = ids.length > 0 && ids.every((id) => open.has(id))
+    rows.push(Button({
+      key: `all:${view.scope}`,
+      label: allOpen ? L.collapseAll : L.expandAll,
+      plain: true,
+      dimColor: true,
+      onPress: () => update($, EXPANDED, (list) => (allOpen ? list.filter((id) => !ids.includes(id)) : [...new Set([...list, ...ids])])),
+    }))
+    for (const c of view.cells) {
+      const id = `${view.scope}/${c.qid}`
+      const isOpen = open.has(id)
+      const mark = c.state === 'met' ? '✓' : c.state === 'abandoned' ? '×' : '○'
+      const head = `${isOpen ? '▾' : '▸'} ${mark} ${label(view, c)}  `
+      rows.push(Button({
+        key: `gate:${id}`,
+        label: head + clip(c.title, Math.max(8, columns - head.length - 2)),
+        plain: true,
+        // What is done steps back; what is left stays at full strength
+        ...(c.state === 'met' ? { dimColor: true } : {}),
+        onPress: () => toggle(id),
+      }))
+      if (isOpen) rows.push(detailsOf($, e, view, c))
+    }
+    rows.push(Text({ key: 'where', dimColor: true, children: [L.where(view.path)] }))
+    return Box({ key: `scope:${view.scope}`, flexDirection: 'column', children: rows })
+  })
+  return Box({ key: 'gate-meter-pane', flexDirection: 'column', rowGap: 1, children: blocks })
 }
 
 async function registerCommand($) {
@@ -424,6 +542,13 @@ export function register(on, options) {
     return { text: scopes.length ? scopes.map(listText).join('\n\n') : L.noBinding }
   })
 
+  // The details pane in the side panel, opened from the row's button
+  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
+    if (!isLanguagePicked) await pickLanguage($)
+    const { scopes } = await read($, VIEW)
+    return paneOf($, e, scopes, await read($, EXPANDED))
+  })
+
   // The band above the prompt: one row per bound scope, none without a binding
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const below = await next(e)
@@ -432,7 +557,8 @@ export function register(on, options) {
     if (!view.length) return below
     if (!isLanguagePicked) await pickLanguage($)
     const { Box } = $.ui.resolve(e)
-    const rows = view.map((v) => rowOf($, e, v))
+    // One button for all the rows: the pane shows every bound scope
+    const rows = view.map((v, i) => rowOf($, e, v, i === 0))
     const mine = rows.length === 1 ? rows[0] : Box({ key: 'gate-meter', flexDirection: 'column', children: rows })
     // Its own place in the band the mods of this repo share, whatever order they loaded in
     return joinBand(Box, 'gate-meter', mine, below)
