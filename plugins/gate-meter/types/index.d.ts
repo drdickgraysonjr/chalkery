@@ -15,10 +15,18 @@ export type GateMeterGate = {
   // Was met before `pause.mjs resume` and is not now.
   regressed?: boolean
   abandonReason?: string
+  // The ledger's own lines for the gate, empty when absent.
+  check?: string
+  expect?: string
+  cwd?: string
+  evidence?: string
 }
 
 export type GateMeterScope = {
   scope: string
+  // The first ledger's `# Gates:` heading and `Scope:` line, empty when absent.
+  heading?: string
+  scopeText?: string
   // The folder that holds .unlazy/.
   root: string
   // The scope's first ledger file.
@@ -44,6 +52,8 @@ declare module 'claude-code' {
     'gate-meter': {
       // The scopes bound to this session, at most a few; empty without a binding.
       view: { scopes: GateMeterScope[] }
+      // Gates opened in the details pane, as `<scope>/<qualified id>`.
+      expanded: string[]
     }
   }
 }

@@ -56,6 +56,9 @@ export function parseLedger(name, text) {
         checked: gate[1].toLowerCase() === 'x',
         runnable: false,
         evidence: '',
+        check: '',
+        expect: '',
+        cwd: '',
       }
       gates.push(current)
       continue
@@ -67,11 +70,44 @@ export function parseLedger(name, text) {
     }
     const attr = current && line.match(ATTR_RE)
     if (attr) {
-      if (attr[1] === 'CHECK') current.runnable = true
+      if (attr[1] === 'CHECK') {
+        current.runnable = true
+        current.check = attr[2].trim()
+      }
+      if (attr[1] === 'EXPECT') current.expect = attr[2].trim()
+      if (attr[1] === 'CWD') current.cwd = attr[2].trim()
       if (attr[1] === 'EVIDENCE') current.evidence = attr[2].trim()
     }
   }
   return gates.map((g) => (abandoned.has(g.id) ? { ...g, abandonReason: abandoned.get(g.id) } : g))
+}
+
+/**
+ * What a ledger says about itself before its first gate: the `# Gates:` heading and the `Scope:` line.
+ * @param {string} text
+ */
+export function parseHeader(text) {
+  let heading = ''
+  let scope = ''
+  for (const line of String(text).split(/\r?\n/)) {
+    if (GATE_RE.test(line)) break
+    const h = line.match(/^#\s+(?:Gates:\s*)?(.+)$/)
+    if (h && !heading) heading = h[1].trim()
+    const sc = line.match(/^Scope:\s*(.+)$/)
+    if (sc && !scope) scope = sc[1].trim()
+  }
+  return { heading, scope }
+}
+
+/**
+ * Automatic evidence in a few words: its exit code and whether EXPECT matched; null for a person's note.
+ * @param {string} evidence
+ */
+export function automaticEvidence(evidence) {
+  const ev = String(evidence)
+  if (!ev.startsWith('automatic-evidence=v1')) return null
+  const exit = (ev.match(/(?:^|;\s*)exit=(\d+)/) || [])[1]
+  return { exit: exit === undefined ? null : Number(exit), matched: /EXPECT=matched/.test(ev) }
 }
 
 /**

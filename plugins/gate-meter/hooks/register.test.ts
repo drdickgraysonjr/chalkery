@@ -138,6 +138,8 @@ function world($: unknown, on: On, w: World = {}) {
   let checker = w.checker
   let sessionId = w.sessionId ?? SESSION
   const runs: string[][] = []
+  // The panes this plugin has open, as the engine keeps them
+  const panes: { id: string; title: string }[] = []
   const missing = () => {
     throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
   }
@@ -176,9 +178,22 @@ function world($: unknown, on: On, w: World = {}) {
   on('turn.complete', () => ({ text: '' }))
   on('turn.start', () => ({}) as never)
   on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: '', stderr: '', interrupted: false } }) as never)
+  on('ui.open', (_$, e) => {
+    const at = panes.findIndex((p) => p.id === e.id)
+    if (at < 0) panes.push({ id: e.id, title: e.title ?? e.id })
+    else panes[at].title = e.title ?? panes[at].title
+    return { value: { isPlaced: true } } as never
+  })
+  on('ui.close', (_$, e) => {
+    const at = panes.findIndex((p) => p.id === e.id)
+    if (at >= 0) panes.splice(at, 1)
+    return { value: undefined } as never
+  })
+  on('ui.panes', () => ({ value: panes.map((p) => ({ ...p, isShown: true, isFocused: false, isPlaced: true })) }) as never)
   on('ui.render', ($$, e) => $$.ui.resolve(e).Text({ key: 'engine', children: ['engine row'] }))
   return {
     runs,
+    panes,
     write(path: string, text: string) {
       files[path] = text
       stamps[path] = ++clock + 1000
@@ -211,6 +226,15 @@ async function bash($: any) {
 async function gates($: any) {
   return ((await $.command.run({ command: 'gates', ...typed })) as { text: string }).text
 }
+
+const paneProps = { title: 'Гейти demo', isFocused: false, bodyColumns: 70, placement: 'dock' as const, scroll: { offset: 0, bodyRows: 40 }, view: {} }
+
+async function pane($: any, surface: string) {
+  return $.ui.mount({ plugin: 'gate-meter', surface, component: 'Pane', requestId: 'gate-meter', props: paneProps })
+}
+
+// A text matched whole: a plain string would also match every box around it
+const exact = (t: string) => new RegExp('^' + t.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&') + '$')
 
 async function rowText(ui: any) {
   return (await ui.find({ key: 'gate-meter:demo' }))?.text as string | undefined
@@ -268,7 +292,7 @@ for (const surface of SURFACES) {
         // The text plus a space each side of every bar
         expect(text.length + parts * 2).toBeLessThanOrEqual(columns)
         expect(text).toContain('Далі G5')
-        if (columns >= 80) expect(text).toMatch(/x…$/)
+        if (columns >= 80) expect(text).toMatch(/x…│Деталі$/)
       }
     })
 
@@ -276,7 +300,7 @@ for (const surface of SURFACES) {
       world($, on, { files: bound(ledger(9, 9)), checker: checkerSays(9, []) })
       await start($)
       const ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
-      expect(await rowText(ui)).toBe('● Гейти demo: усі 9 закрито')
+      expect(await rowText(ui)).toBe('● Гейти demo: усі 9 закрито│Деталі')
       expect((await ui.find({ text: /^●$/ }))?.props.color).toBe('green')
       expect((await ui.find({ text: /^ Гейти demo: усі 9 закрито$/ }))?.props.dimColor).toBe(true)
       expect(await ui.find({ text: /^■$/ })).toBeUndefined()
@@ -361,6 +385,110 @@ for (const surface of SURFACES) {
       await start($)
       const ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props: { ...props, hasSurvey: true } })
       expect(await ui.find({ key: 'gate-meter:demo' })).toBeUndefined()
+    })
+
+    test('details button opens the pane in the side panel, titled by the scope', async ($, on) => {
+      const w = world($, on, { files: bound(ledger(9, 4)), checker: checkerSays(9, openFrom(5, 9)) })
+      await start($)
+      const ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
+      const button = await ui.find({ key: 'details' })
+      expect(button?.type).toBe('Button')
+      expect(button?.props.label).toBe('Деталі')
+      expect(button?.props.dimColor).toBe(true)
+      expect(button?.props.hotkey).toBe(surface === 'terminal' ? 'g' : undefined)
+      await ui.press({ key: 'details' })
+      expect(w.panes).toEqual([{ id: 'gate-meter', title: 'Гейти demo' }])
+    })
+
+    test('details button closes the open pane on a second press', async ($, on) => {
+      const w = world($, on, { files: bound(ledger(9, 4)), checker: checkerSays(9, openFrom(5, 9)) })
+      await start($)
+      const ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
+      await ui.press({ key: 'details' })
+      await ui.press({ key: 'details' })
+      expect(w.panes).toEqual([])
+    })
+
+    test('details button in the all-met row opens the pane too', async ($, on) => {
+      const w = world($, on, { files: bound(ledger(3, 3)), checker: checkerSays(3, []) })
+      await start($)
+      const ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
+      await ui.press({ key: 'details' })
+      expect(w.panes.map((p) => p.id)).toEqual(['gate-meter'])
+    })
+
+    test('pane header: the ledger heading and Scope, the count and its source, one line per gate', async ($, on) => {
+      world($, on, { files: bound(ledger(9, 4)), checker: checkerSays(9, openFrom(5, 9)) })
+      await start($)
+      const ui = await pane($, surface)
+      expect((await ui.find({ text: /^demo$/ }))?.props.bold).toBe(true)
+      expect((await ui.find({ text: /^a demo\.$/ }))?.props.dimColor).toBe(true)
+      expect((await ui.find({ key: 'count' }))?.text).toBe('Закрито 4 з 9за перевірником unlazy')
+      const met = await ui.find({ key: 'gate:demo/GATES:G1' })
+      expect(met?.props.label).toBe('▸ ✓ G1  outcome number 1 of the demo scope')
+      expect(met?.props.dimColor).toBe(true)
+      const open = await ui.find({ key: 'gate:demo/GATES:G5' })
+      expect(open?.props.label).toBe('▸ ○ G5  outcome number 5 of the demo scope')
+      expect(open?.props.dimColor).toBeUndefined()
+      expect((await ui.find({ text: exact(`Набір: ${SCOPE_DIR}/GATES.md`) }))?.props.dimColor).toBe(true)
+      // Collapsed, nothing below the gates' lines
+      expect(await ui.find({ key: 'details:GATES:G5' })).toBeUndefined()
+    })
+
+    test('pane expand a gate: its CHECK, EXPECT, evidence and why it is open; a second press folds it', async ($, on) => {
+      world($, on, { files: bound(ledger(9, 4)), checker: checkerSays(9, openFrom(5, 9)) })
+      await start($)
+      const ui = await pane($, surface)
+      await ui.press({ key: 'gate:demo/GATES:G5' })
+      expect((await ui.find({ key: 'gate:demo/GATES:G5' }))?.props.label).toMatch(/^▾ ○ G5/)
+      const details = (await ui.find({ key: 'details:GATES:G5' }))?.text ?? ''
+      expect(details).toContain('outcome number 5 of the demo scope')
+      expect(details).toContain('EXPECTOK5')
+      expect(details).toContain('Свідченняще немає')
+      expect(details).toContain('Відкритий, боще не перевірено')
+      expect(JSON.stringify(await ui.drawn())).toContain('"source":"node check.mjs g5"')
+      await ui.press({ key: 'gate:demo/GATES:G1' })
+      expect((await ui.find({ key: 'details:GATES:G1' }))?.text).toContain('Свідченняавтоматичне: код виходу 0, EXPECT збігся')
+      await ui.press({ key: 'gate:demo/GATES:G5' })
+      expect(await ui.find({ key: 'details:GATES:G5' })).toBeUndefined()
+    })
+
+    test('pane expand all, then collapse all', async ($, on) => {
+      world($, on, { files: bound(ledger(4, 2)), checker: checkerSays(4, openFrom(3, 4)) })
+      await start($)
+      const ui = await pane($, surface)
+      expect((await ui.find({ key: 'all:demo' }))?.props.label).toBe('Розгорнути все')
+      await ui.press({ key: 'all:demo' })
+      for (const id of ['G1', 'G2', 'G3', 'G4']) expect(await ui.find({ key: `details:GATES:${id}` })).toBeDefined()
+      expect((await ui.find({ key: 'all:demo' }))?.props.label).toBe('Згорнути все')
+      await ui.press({ key: 'all:demo' })
+      for (const id of ['G1', 'G2', 'G3', 'G4']) expect(await ui.find({ key: `details:GATES:${id}` })).toBeUndefined()
+    })
+
+    test('pane without binding says how gates get here', async ($, on) => {
+      world($, on, { files: {}, checker: null })
+      await start($)
+      const ui = await pane($, surface)
+      expect(JSON.stringify(await ui.drawn())).toContain(uk.noBinding)
+    })
+
+    test('pane state lines: pause, regression and an abandoned gate with its reason', async ($, on) => {
+      world($, on, {
+        files: bound(ledger(4, 1, '\nABANDON: G4 the owner left\n'), {
+          [`${SCOPE_DIR}/pause.json`]: JSON.stringify({ schema: 1, session: SESSION }),
+          [`${SCOPE_DIR}/regression.json`]: JSON.stringify({ schema: 1, ids: ['GATES:G2'] }),
+        }),
+        checker: checkerSays(4, openFrom(2, 3), ['GATES:G4']),
+      })
+      await start($)
+      const ui = await pane($, surface)
+      expect((await ui.find({ text: exact(uk.stateLine.paused) }))?.props.dimColor).toBe(true)
+      expect((await ui.find({ text: exact(uk.regressedLine('GATES:G2')) }))?.props.color).toBe('red')
+      expect((await ui.find({ key: 'gate:demo/GATES:G4' }))?.props.label).toMatch(/^▸ × G4/)
+      await ui.press({ key: 'gate:demo/GATES:G4' })
+      expect((await ui.find({ text: exact('покинуто: the owner left') }))?.props.color).toBe('yellow')
+      await ui.press({ key: 'gate:demo/GATES:G2' })
+      expect((await ui.find({ key: 'details:GATES:G2' }))?.text).toContain('зламався після відновлення')
     })
 
     test('progress moves after a Bash call that ran the checker', async ($, on) => {
