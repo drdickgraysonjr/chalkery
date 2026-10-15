@@ -45,6 +45,8 @@ export type GateMeterScope = {
   blockers: string[]
   paused: boolean
   blocked: boolean
+  // The first sentence of BLOCKED.md's best option, what the stop waits for; empty without one.
+  blockedNext?: string
 }
 
 declare module 'claude-code' {

@@ -14,7 +14,7 @@
 
 import { atom, read, update } from 'claude-code'
 import { joinBand } from './band.mjs'
-import { automaticEvidence, clip, parseChecker, parseHeader, parseLedgers, summarize } from './ledger.mjs'
+import { automaticEvidence, bestOption, clip, parseChecker, parseHeader, parseLedgers, splitTitle, summarize } from './ledger.mjs'
 import { resolveLanguage, isLanguageKey } from './i18n.mjs'
 import en from './locales/en.mjs'
 import uk from './locales/uk.mjs'
@@ -207,6 +207,8 @@ async function scopeView($, root, scope) {
       paused = false
     }
   }
+  // What the stop waits for, in BLOCKED.md's own words
+  const blockedText = stamps[2] > 0 ? await tryRead($, join(dir, 'BLOCKED.md')) : null
   const sum = summarize(gates, report, regressed)
   const header = parseHeader(files[0].text)
   const view = {
@@ -239,6 +241,7 @@ async function scopeView($, root, scope) {
     blockers: sum.blockers,
     paused,
     blocked: stamps[2] > 0,
+    blockedNext: blockedText ? bestOption(blockedText) : '',
   }
   seen.set(key, { fingerprint, view })
   return view
@@ -422,89 +425,141 @@ function listText(view) {
   return [...lines, '', ...after].join('\n')
 }
 
-// A field of an open gate: its dim name on a line of its own, the value below it
+// A field of how a gate is checked: its dim name on a line of its own, the value below it
 function fieldOf($, e, key, name, value) {
   const { Box, Text } = $.ui.resolve(e)
   const body = typeof value === 'string' ? Text({ wrap: 'wrap', children: [value] }) : value
   return Box({ key, flexDirection: 'column', children: [Text({ dimColor: true, children: [name] }), body] })
 }
 
-// One gate's details, as the ledger has them: open in the pane on press
-function detailsOf($, e, view, c) {
-  const { Box, Text, Code } = $.ui.resolve(e)
-  const fields = [Text({ wrap: 'wrap', children: [c.title] })]
-  if (c.check) {
-    fields.push(fieldOf($, e, 'check', 'CHECK', Code({ key: 'value', source: c.check, language: 'sh' })))
-    fields.push(fieldOf($, e, 'expect', 'EXPECT', c.expect || '—'))
-    if (c.cwd) fields.push(fieldOf($, e, 'cwd', 'CWD', c.cwd))
-  } else fields.push(Text({ dimColor: true, children: [L.manualGate] }))
-  const auto = automaticEvidence(c.evidence)
-  const ev = !c.evidence || c.evidence.toLowerCase() === 'pending' ? L.evidenceNone : auto ? L.evidenceAuto(auto.exit, auto.matched) : c.evidence
-  fields.push(fieldOf($, e, 'evidence', L.evidenceName, ev))
-  if (c.state === 'unmet') fields.push(fieldOf($, e, 'why', L.whyOpen, [c.regressed ? L.regressedShort : '', L.reasonLong[c.reason] || L.reasonLong.unchecked].filter(Boolean).join(', ')))
-  if (c.state === 'abandoned') fields.push(fieldOf($, e, 'abandoned', L.whyAbandoned, c.abandonReason || '—'))
-  // Indented under the gate's id, a line between the fields and a line after the last
-  return Box({ key: `details:${c.qid}`, flexDirection: 'column', rowGap: 1, paddingLeft: 4, marginBottom: 1, children: fields })
+// Where a gate stands, in words a person reads: how it was closed, or why it is still open
+function statusOf(c) {
+  if (c.state === 'abandoned') return L.status.abandoned(c.abandonReason || '—')
+  const ev = String(c.evidence || '').trim()
+  const auto = automaticEvidence(ev)
+  if (c.state === 'met') return auto ? L.status.metAuto : ev && ev.toLowerCase() !== 'pending' ? L.status.metBy(ev) : L.status.metAuto
+  if (c.regressed) return L.status.regressed
+  if (c.reason === 'stale') return L.status.stale
+  if (c.reason === 'pending') return L.status.pending
+  return c.check ? L.status.unchecked : L.status.waitsHuman
 }
 
-// The pane: each bound scope's heading, its Scope as a paragraph, counts and states; then its gates, each opening on press
+// One gate opened in the pane: what the outcome is and where it stands; how it is checked one press further
+function detailsOf($, e, view, c, open, toggle) {
+  const { Box, Text, Button } = $.ui.resolve(e)
+  const { rest } = splitTitle(c.title)
+  const id = `${view.scope}/${c.qid}`
+  const parts = []
+  if (rest) parts.push(Text({ wrap: 'wrap', children: [rest] }))
+  parts.push(Text({ wrap: 'wrap', dimColor: true, children: [statusOf(c)] }))
+  if (c.check) {
+    const howOpen = open.has(`${id}#how`)
+    parts.push(Button({ key: `how:${id}`, label: `${howOpen ? '▾' : '▸'} ${L.howChecked}`, plain: true, dimColor: true, onPress: () => toggle(`${id}#how`) }))
+    if (howOpen) {
+      const { Code } = $.ui.resolve(e)
+      const auto = automaticEvidence(c.evidence)
+      const ev = !c.evidence || c.evidence.toLowerCase() === 'pending' ? L.evidenceNone : auto ? L.evidenceAuto(auto.exit, auto.matched) : c.evidence
+      const fields = [fieldOf($, e, 'check', 'CHECK', Code({ key: 'value', source: c.check, language: 'sh' })), fieldOf($, e, 'expect', 'EXPECT', c.expect || '—')]
+      if (c.cwd) fields.push(fieldOf($, e, 'cwd', 'CWD', c.cwd))
+      fields.push(fieldOf($, e, 'evidence', L.evidenceName, ev))
+      parts.push(Box({ key: `how-body:${c.qid}`, flexDirection: 'column', rowGap: 1, paddingLeft: 2, children: fields }))
+    }
+  }
+  // Under the gate's name, and a line after it before the next gate
+  return Box({ key: `details:${c.qid}`, flexDirection: 'column', rowGap: 1, paddingLeft: 4, marginBottom: 1, children: parts })
+}
+
+// The pane: each bound scope's heading, count and states; its gates in groups, open first; about the scope last
 function paneOf($, e, scopes, expanded) {
   const { Box, Text, Button } = $.ui.resolve(e)
   const columns = Math.max(30, Number(e.props && e.props.bodyColumns) || 60)
   if (!scopes.length) return Box({ key: 'gate-meter-pane', flexDirection: 'column', children: [Text({ dimColor: true, children: [L.noBinding] })] })
   const open = new Set(expanded)
-  const toggle = (qid) => update($, EXPANDED, (list) => {
+  const toggle = (id) => update($, EXPANDED, (list) => {
     const next = new Set(list)
-    next.has(qid) ? next.delete(qid) : next.add(qid)
+    next.has(id) ? next.delete(id) : next.add(id)
     return [...next]
   })
   const blocks = scopes.map((view) => {
-    const header = [Text({ bold: true, wrap: 'wrap', children: [view.heading || L.paneTitle(view.scope)] })]
-    if (view.scopeText) header.push(Box({ key: 'scope', paddingLeft: 2, children: [Text({ dimColor: true, wrap: 'wrap', children: [view.scopeText] })] }))
-    const status = [Box({ key: 'count', flexDirection: 'row', columnGap: 1, children: [Text({ children: [L.metOf(view.met, view.total)] }), Text({ dimColor: true, children: [view.source === 'checker' ? L.sourceShort.checker : L.sourceShort.boxes] })] })]
-    for (const s of statesOf(view)) {
-      if (!s.line) continue
-      const words = Text({ wrap: 'wrap', ...(s.dim ? { dimColor: true } : {}), children: [s.line] })
-      // A state without a dot keeps the words in line with those that have one
-      status.push(s.dot
-        ? Box({ key: `state:${s.key}`, flexDirection: 'row', columnGap: 1, children: [Text({ ...s.dotStyle, children: [s.dot] }), words] })
-        : Box({ key: `state:${s.key}`, flexDirection: 'row', paddingLeft: 2, children: [words] }))
+    // The heading without the scope's name, which the pane's title already says
+    const heading = (view.heading || '').replace(new RegExp('^' + view.scope.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[—–-]\\s*'), '')
+    const header = []
+    if (heading) header.push(Text({ bold: true, wrap: 'wrap', children: [heading.charAt(0).toLocaleUpperCase() + heading.slice(1)] }))
+    header.push(Text({ children: [L.metOf(view.met, view.total)] }))
+    const states = []
+    // The abandoned have a group of their own below
+    for (const s of statesOf(view).filter((x) => x.key !== 'abandoned')) {
+      const line = s.key === 'regressed'
+        ? L.regressedLine(view.regressed.map((qid) => {
+          const gate = view.cells.find((c) => c.qid === qid)
+          return gate ? `${shortId(view, qid)} ${splitTitle(gate.title).name}` : shortId(view, qid)
+        }).join(', '))
+        : s.key === 'blocked' && view.blockedNext ? L.blocked : s.line || s.text
+      const words = [Text({ wrap: 'wrap', ...(s.dim ? { dimColor: true } : {}), children: [line] })]
+      if (s.key === 'blocked' && view.blockedNext) words.push(Text({ wrap: 'wrap', dimColor: true, children: [view.blockedNext] }))
+      const body = Box({ key: 'words', flexDirection: 'column', flexShrink: 1, children: words })
+      // A state without a dot keeps its words in line with those that have one
+      states.push(s.dot
+        ? Box({ key: `state:${s.key}`, flexDirection: 'row', columnGap: 1, alignItems: 'flex-start', children: [Text({ ...s.dotStyle, children: [s.dot] }), body] })
+        : Box({ key: `state:${s.key}`, flexDirection: 'row', paddingLeft: 2, children: [body] }))
     }
-    if (view.next) status.push(Text({ dimColor: true, children: [L.upNext(label(view, view.next))] }))
-    header.push(Box({ key: 'status', flexDirection: 'column', children: status }))
+    if (states.length) header.push(Box({ key: 'states', flexDirection: 'column', children: states }))
 
     const ids = view.cells.map((c) => `${view.scope}/${c.qid}`)
     const allOpen = ids.length > 0 && ids.every((id) => open.has(id))
-    const gates = [Button({
+    const gateRow = (c) => {
+      const id = `${view.scope}/${c.qid}`
+      const isOpen = open.has(id)
+      const mark = c.state === 'met' ? '✓' : c.state === 'abandoned' ? '×' : '○'
+      const head = `${isOpen ? '▾' : '▸'} ${mark} ${label(view, c)}  `
+      const row = [Button({
+        key: `gate:${id}`,
+        label: head + clip(splitTitle(c.title).name, Math.max(8, columns - head.length)),
+        plain: true,
+        // What is done steps back; what is left stays at full strength
+        ...(c.state === 'met' ? { dimColor: true } : {}),
+        onPress: () => toggle(id),
+      })]
+      if (isOpen) row.push(detailsOf($, e, view, c, open, toggle))
+      return row
+    }
+    const groups = []
+    for (const [key, name, state] of [['open', L.groupOpen, 'unmet'], ['abandoned', L.groupAbandoned, 'abandoned'], ['met', L.groupMet, 'met']]) {
+      const cells = view.cells.filter((c) => c.state === state)
+      if (!cells.length) continue
+      const title = Box({ key: 'title', flexDirection: 'row', columnGap: 1, children: [Text({ bold: true, children: [name] }), Text({ dimColor: true, children: [String(cells.length)] })] })
+      groups.push(Box({ key: `group:${key}`, flexDirection: 'column', children: [title, ...cells.flatMap(gateRow)] }))
+    }
+    const all = Button({
       key: `all:${view.scope}`,
       label: allOpen ? L.collapseAll : L.expandAll,
       plain: true,
       dimColor: true,
       onPress: () => update($, EXPANDED, (list) => (allOpen ? list.filter((id) => !ids.includes(id)) : [...new Set([...list, ...ids])])),
-    })]
-    // The ids stand in a column as wide as the widest, so the titles start at one place
-    const idColumn = 4 + Math.max(0, ...view.cells.map((c) => label(view, c).length)) + 2
-    for (const c of view.cells) {
-      const id = `${view.scope}/${c.qid}`
-      const isOpen = open.has(id)
-      const mark = c.state === 'met' ? '✓' : c.state === 'abandoned' ? '×' : '○'
-      // What is done steps back; what is left stays at full strength
-      const dim = c.state === 'met' ? { dimColor: true } : {}
-      gates.push(Box({
-        key: `row:${id}`,
-        flexDirection: 'row',
-        children: [
-          Box({ key: 'id', width: idColumn, flexShrink: 0, children: [Button({ key: `gate:${id}`, label: `${isOpen ? '▾' : '▸'} ${mark} ${label(view, c)}`, plain: true, ...dim, onPress: () => toggle(id) })] }),
-          Button({ key: `gate-title:${id}`, label: clip(c.title, Math.max(8, columns - idColumn)), plain: true, ...dim, onPress: () => toggle(id) }),
-        ],
-      }))
-      if (isOpen) gates.push(detailsOf($, e, view, c))
+    })
+
+    // About the scope, folded: its Scope line, where the counts come from, the ledger's path
+    const aboutId = `${view.scope}#about`
+    const aboutOpen = open.has(aboutId)
+    const about = [Button({ key: `about:${view.scope}`, label: `${aboutOpen ? '▾' : '▸'} ${L.about}`, plain: true, dimColor: true, onPress: () => toggle(aboutId) })]
+    if (aboutOpen) {
+      const lines = []
+      if (view.scopeText) lines.push(Text({ wrap: 'wrap', children: [view.scopeText] }))
+      const source = view.source === 'checker' ? L.sourceChecker : L.sourceBoxes
+      lines.push(Text({ wrap: 'wrap', dimColor: true, children: [source.charAt(0).toLocaleUpperCase() + source.slice(1) + '.'] }))
+      lines.push(Text({ wrap: 'wrap', dimColor: true, children: [L.where(view.path)] }))
+      about.push(Box({ key: 'about-body', flexDirection: 'column', rowGap: 1, paddingLeft: 2, children: lines }))
     }
     return Box({
       key: `scope:${view.scope}`,
       flexDirection: 'column',
       rowGap: 1,
-      children: [...header, Box({ key: 'gates', flexDirection: 'column', children: gates }), Text({ dimColor: true, wrap: 'wrap', children: [L.where(view.path)] })],
+      children: [
+        Box({ key: 'header', flexDirection: 'column', rowGap: 1, children: header }),
+        all,
+        ...groups,
+        Box({ key: 'about', flexDirection: 'column', rowGap: 1, children: about }),
+      ],
     })
   })
   return Box({ key: 'gate-meter-pane', flexDirection: 'column', rowGap: 2, children: blocks })
