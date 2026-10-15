@@ -317,7 +317,7 @@ for (const surface of SURFACES) {
       await start($)
       const ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
       expect(await rowText(ui)).toContain('Гейти' + '■'.repeat(3) + '□'.repeat(11) + '3 з 14│')
-      expect(await ui.find({ text: /^[○◔◑◕●]$/ })).toBeUndefined()
+      expect(await ui.find({ text: /^(◌|◔|◕|⏺\uFE0E)$/ })).toBeUndefined()
       expect(await rowText(ui)).not.toContain('%')
     })
 
@@ -325,18 +325,19 @@ for (const surface of SURFACES) {
       const w = world($, on, { files: bound(ledger(15, 6)), checker: checkerSays(15, openFrom(7, 15)) })
       await start($)
       let ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
-      expect(await rowText(ui)).toBe('Гейти◑6 з 1540 %│Деталі')
+      expect(await rowText(ui)).toBe('Гейти◔6 з 1540 %│Деталі')
       expect((await textEl(ui, '40 %'))?.props?.dimColor).toBe(true)
       expect(await ui.find({ text: /^[■□]$/ })).toBeUndefined()
-      // The quarters: none met is an empty dim pie, a few a quarter, most three quarters, all a full one
-      for (const [met, pie] of [[0, '○'], [3, '◔'], [12, '◕'], [14, '◕'], [15, '●']] as const) {
+      // None met is an empty dim pie, under half a quarter, half or more three quarters, all a full one
+      for (const [met, pie] of [[0, '◌'], [3, '◔'], [7, '◔'], [8, '◕'], [14, '◕'], [15, '⏺\uFE0E']] as const) {
         w.write(`${SCOPE_DIR}/GATES.md`, ledger(15, met))
         w.setChecker(checkerSays(15, met < 15 ? openFrom(met + 1, 15) : []))
         await bash($)
         ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
         expect(await rowText(ui)).toContain(`Гейти${pie}${met} з 15${Math.floor((met / 15) * 100)} %`)
       }
-      expect((await textEl(ui, '○'))).toBeUndefined()
+      // None of the marks comes from a font a third larger than the rest
+      expect(JSON.stringify(await ui.drawn())).not.toMatch(/[●○◑]/)
     })
 
     test('green from 75%: at 3 of 4 cells and at 12 of 16 the pie the filled turn green', async ($, on) => {
@@ -371,7 +372,7 @@ for (const surface of SURFACES) {
       world($, on, { files: bound(ledger(9, 9)), checker: checkerSays(9, []) })
       await start($)
       const ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
-      expect(await rowText(ui)).toBe('Гейти' + '■'.repeat(9) + '9 з 9│•Усі закрито│Деталі')
+      expect(await rowText(ui)).toBe('Гейти' + '■'.repeat(9) + '9 з 9│⏺\uFE0EУсі закрито│Деталі')
             expect((await dotOf(ui, 'done'))?.props?.color).toBe('green')
       const words = await wordsOf(ui, 'done')
       expect(words?.props.dimColor).toBe(true)
@@ -382,7 +383,7 @@ for (const surface of SURFACES) {
       const w = world($, on, { files: bound(ledger(4, 2), { [`${SCOPE_DIR}/pause.json`]: JSON.stringify({ schema: 1, session: SESSION }) }), checker: checkerSays(4, openFrom(3, 4)) })
       await start($)
       let ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
-      expect(await rowText(ui)).toContain('2 з 4│◌На паузі│Деталі')
+      expect(await rowText(ui)).toContain('2 з 4│⏺\uFE0EНа паузі│Деталі')
             expect((await dotOf(ui, 'paused'))?.props?.dimColor).toBe(true)
       expect((await wordsOf(ui, 'paused'))?.props?.dimColor).toBe(true)
       w.write(`${SCOPE_DIR}/pause.json`, JSON.stringify({ schema: 1, session: 'other' }))
@@ -395,7 +396,7 @@ for (const surface of SURFACES) {
       world($, on, { files: bound(ledger(4, 3), { [`${SCOPE_DIR}/BLOCKED.md`]: 'SESSION: session-1\n' }), checker: checkerSays(4, openFrom(4, 4)) })
       await start($)
       const ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
-      expect(await rowText(ui)).toContain('3 з 4│•Очікує на рішення│Деталі')
+      expect(await rowText(ui)).toContain('3 з 4│⏺\uFE0EОчікує на рішення│Деталі')
             expect((await dotOf(ui, 'blocked'))?.props?.color).toBe('yellow')
       const words = await wordsOf(ui, 'blocked')
       expect(words?.props?.color).toBeUndefined()
@@ -421,7 +422,7 @@ for (const surface of SURFACES) {
       const ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
       const red = await ui.findAll({ text: /^□$/ })
       expect(red.filter((c: any) => c.props.color === 'red')).toHaveLength(1)
-      expect(await rowText(ui)).toContain('1 з 4│•Регресія G2│Деталі')
+      expect(await rowText(ui)).toContain('1 з 4│⏺\uFE0EРегресія G2│Деталі')
             expect((await dotOf(ui, 'regressed'))?.props?.color).toBe('red')
       expect((await wordsOf(ui, 'regressed'))?.props?.color).toBeUndefined()
     })
@@ -449,7 +450,7 @@ for (const surface of SURFACES) {
         const text = (await rowText(ui)) ?? ''
         const bars = (await ui.findAll({ text: /^│$/ })).length
         // The text, a space each side of every bar, a space after each dot, the terminal's hotkey mark
-        const dots = (await ui.findAll({ text: /^[•◌]$/ })).length
+        const dots = (await ui.findAll({ text: /^⏺\uFE0E$/ })).length
         expect(text.length + bars * 2 + dots + (surface === 'terminal' ? 4 : 0)).toBeLessThanOrEqual(columns)
         expect(await ui.find({ key: 'state:blocked' })).toBeDefined()
         expect(await ui.find({ key: 'state:regressed' })).toBeDefined()

@@ -26,10 +26,12 @@ const TICK_EVERY = 15000
 // From this many gates the row draws one pie that fills by the share met, and the percentage,
 // instead of one cell per gate: a long ledger's cells would crowd the row
 const BAR_FROM = 15
-// The dot a state carries its colour in: small, so it does not outweigh the words or the pie
-const DOT = '•'
-// The pie's quarters: empty, a quarter, a half, three quarters, full
-const PIE = ['○', '◔', '◑', '◕', '●']
+// The marks are picked by the font that draws them. On a Mac's desktop ● and ◑ come from the system
+// and Hiragino fonts, a third larger than the ◔ ◕ that fall back to Menlo; ⏺ (STIX, kept as text by
+// U+FE0E) is the filled circle of their size, ◌ the empty one. A state carries its colour in that dot
+const DOT = '⏺\uFE0E'
+// The pie: none met, under half, half or more, all
+const PIE = ['◌', '◔', '◕', DOT]
 // From this share of met gates the filled cells turn green: the end is near
 const GREEN_AT = 0.75
 // Bound scopes drawn at most; the Stop hook enforces none when there are several
@@ -323,12 +325,11 @@ function cellsOf(view) {
   return [{ mark: pieOf(view), style: view.met ? filled : { dimColor: true } }]
 }
 
-// The pie for the share met: empty only with none met and full only with all, the quarters between
+// The pie for the share met: empty only with none met and full only with all
 function pieOf(view) {
   if (!view.met) return PIE[0]
-  if (view.met >= view.total) return PIE[4]
-  const share = view.met / view.total
-  return share < 3 / 8 ? PIE[1] : share < 5 / 8 ? PIE[2] : PIE[3]
+  if (view.met >= view.total) return PIE[3]
+  return view.met / view.total < 0.5 ? PIE[1] : PIE[2]
 }
 
 // The share met in whole percent, rounded down so that an unfinished ledger never reads 100
@@ -345,7 +346,7 @@ function statesOf(view) {
     const ids = view.regressed.map((qid) => shortId(view, qid))
     out.push({ key: 'regressed', dot: DOT, dotStyle: { color: 'red' }, ids, text: L.regressed(ids.join(', ')), line: L.regressedLine(ids.join(', ')) })
   }
-  if (view.paused && !view.blocked) out.push({ key: 'paused', dot: '◌', dotStyle: { dimColor: true }, text: L.paused, line: L.stateLine.paused, dim: true })
+  if (view.paused && !view.blocked) out.push({ key: 'paused', dot: DOT, dotStyle: { dimColor: true }, text: L.paused, line: L.stateLine.paused, dim: true })
   if (view.abandoned) out.push({ key: 'abandoned', text: L.abandoned(view.abandoned), dim: true, optional: true })
   if (view.blockers.length) out.push({ key: 'waves', text: L.waves(view.blockers.length), line: L.wavesLine(view.blockers.join('; ')), dim: true, optional: true })
   if (view.unmet === 0 && view.abandoned === 0 && !view.blockers.length) out.push({ key: 'done', dot: DOT, dotStyle: { color: 'green' }, text: L.allMet, line: L.allMetLine(view.total), dim: true })
