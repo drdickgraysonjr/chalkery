@@ -251,6 +251,10 @@ const wordsOf = async (ui: any, state: string) => (await kids(ui, `state:${state
 async function textEl(ui: any, text: string) {
   return (await ui.findAll({ type: 'Text', text: exact(text) }))[0] as any
 }
+// The innermost Text with this text: a wrapper Text that holds only it matches too
+async function leafText(ui: any, text: string) {
+  return (await ui.findAll({ type: 'Text', text: exact(text) })).at(-1) as any
+}
 
 // A ledger whose gates tell a story: titles with a lead before a colon, manual gates, each kind of open
 const gate = (id: string, box: string, title: string, check: boolean, evidence: string) =>
@@ -313,19 +317,29 @@ for (const surface of SURFACES) {
       await start($)
       const ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
       expect(await rowText(ui)).toContain('Гейти' + '■'.repeat(3) + '□'.repeat(11) + '3 з 14│')
-      expect(await ui.find({ text: /^█$/ })).toBeUndefined()
+      expect(await ui.find({ text: /^[○◔◑◕●]$/ })).toBeUndefined()
+      expect(await rowText(ui)).not.toContain('%')
     })
 
-    test('bar from 15: a bar of 15 steps like cache-meter\'s, met in █, open in dim ░', async ($, on) => {
-      world($, on, { files: bound(ledger(15, 6)), checker: checkerSays(15, openFrom(7, 15)) })
+    test('pie from 15: one pie by the share met and the dim percentage instead of cells', async ($, on) => {
+      const w = world($, on, { files: bound(ledger(15, 6)), checker: checkerSays(15, openFrom(7, 15)) })
       await start($)
-      const ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
-      expect(await rowText(ui)).toContain('Гейти' + '█'.repeat(6) + '░'.repeat(9) + '6 з 15│')
-      for (const step of await ui.findAll({ text: /^░$/ })) expect(step.props.dimColor).toBe(true)
-      expect(await ui.find({ text: /^■$/ })).toBeUndefined()
+      let ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
+      expect(await rowText(ui)).toBe('Гейти◑6 з 1540 %│Деталі')
+      expect((await textEl(ui, '40 %'))?.props?.dimColor).toBe(true)
+      expect(await ui.find({ text: /^[■□]$/ })).toBeUndefined()
+      // The quarters: none met is an empty dim pie, a few a quarter, most three quarters, all a full one
+      for (const [met, pie] of [[0, '○'], [3, '◔'], [12, '◕'], [14, '◕'], [15, '●']] as const) {
+        w.write(`${SCOPE_DIR}/GATES.md`, ledger(15, met))
+        w.setChecker(checkerSays(15, met < 15 ? openFrom(met + 1, 15) : []))
+        await bash($)
+        ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
+        expect(await rowText(ui)).toContain(`Гейти${pie}${met} з 15${Math.floor((met / 15) * 100)} %`)
+      }
+      expect((await textEl(ui, '○'))).toBeUndefined()
     })
 
-    test('green from 75%: at 3 of 4 cells and at 12 of 16 in the bar the filled turn green', async ($, on) => {
+    test('green from 75%: at 3 of 4 cells and at 12 of 16 the pie the filled turn green', async ($, on) => {
       const w = world($, on, { files: bound(ledger(4, 3)), checker: checkerSays(4, openFrom(4, 4)) })
       await start($)
       let ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
@@ -334,12 +348,10 @@ for (const surface of SURFACES) {
       w.setChecker(checkerSays(16, openFrom(13, 16)))
       await bash($)
       ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
-      const steps = await ui.findAll({ text: /^█$/ })
-      expect(steps.length).toBeGreaterThan(0)
-      for (const step of steps) expect(step.props.color).toBe('green')
+      expect((await leafText(ui, '◕'))?.props?.color).toBe('green')
     })
 
-    test('not green below 75%: at 5 of 7 cells and at 11 of 15 in the bar the filled keep the text colour', async ($, on) => {
+    test('not green below 75%: at 5 of 7 cells and at 11 of 15 the pie keep the text colour', async ($, on) => {
       const w = world($, on, { files: bound(ledger(7, 5)), checker: checkerSays(7, openFrom(6, 7)) })
       await start($)
       let ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
@@ -350,9 +362,9 @@ for (const surface of SURFACES) {
       w.setChecker(checkerSays(15, openFrom(12, 15)))
       await bash($)
       ui = await $.ui.mount({ plugin: 'gate-meter', surface, component: 'AbovePrompt', props })
-      const steps = await ui.findAll({ text: /^█$/ })
-      expect(steps).toHaveLength(11)
-      for (const step of steps) expect(step.props.color).toBeUndefined()
+      const pie = await leafText(ui, '◕')
+      expect(pie).toBeDefined()
+      expect(pie?.props?.color).toBeUndefined()
     })
 
     test('row state all met: green cells, then a green dot and dim "Усі закрито"', async ($, on) => {
@@ -798,11 +810,11 @@ test('several ledgers: ids are qualified with the file stem, as unlazy reports t
   expect((await p.find({ key: 'gate:demo/leaf-1:L1' }))?.props.label).toBe('▸ ○ leaf-1:L1  The leaf outcome')
 })
 
-test('a long ledger draws a proportional bar of 15 steps', async ($, on) => {
+test('a long ledger draws one pie and the percentage', async ($, on) => {
   world($, on, { files: bound(ledger(40, 30)), checker: checkerSays(40, openFrom(31, 40)) })
   await start($)
   const ui = await $.ui.mount({ plugin: 'gate-meter', surface: 'terminal', component: 'AbovePrompt', props })
-  expect(await rowText(ui)).toContain('█'.repeat(11) + '░'.repeat(4) + '30 з 40')
+  expect(await rowText(ui)).toContain('Гейти◕30 з 4075 %│')
 })
 
 test('a new session id after /clear drops the old binding', async ($, on) => {

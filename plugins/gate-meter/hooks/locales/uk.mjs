@@ -5,6 +5,7 @@ export default {
   // Смуга над полем вводу
   gates: 'Гейти',
   count: (met, total) => `${met} з ${total}`,
+  percent: (n) => `${n} %`,
   abandoned: (n) => `покинуто ${n}`,
   allMet: 'Усі закрито',
   paused: 'На паузі',

@@ -23,9 +23,11 @@ const LOCALES = { en, uk }
 const DIR = '.unlazy'
 // Scopes are re-read this often while nothing else asks for it; a Bash call or a finished turn asks at once
 const TICK_EVERY = 15000
-// From this many gates the row draws a bar of BAR_CELLS instead of one cell per gate, as cache-meter's bar
+// From this many gates the row draws one pie that fills by the share met, and the percentage,
+// instead of one cell per gate: a long ledger's cells would crowd the row
 const BAR_FROM = 15
-const BAR_CELLS = 15
+// The pie's quarters: empty, a quarter, a half, three quarters, full
+const PIE = ['○', '◔', '◑', '◕', '●']
 // From this share of met gates the filled cells turn green: the end is near
 const GREEN_AT = 0.75
 // Bound scopes drawn at most; the Stop hook enforces none when there are several
@@ -304,7 +306,7 @@ function label(view, gate) {
   return view.multiFile ? gate.qid : gate.id
 }
 
-// One cell per gate in ledger order, or a proportional bar for a long ledger. Each is a mark and its style:
+// One cell per gate in ledger order, or a pie for a long ledger. Each is a mark and its style:
 // a met gate is filled in the text's own colour, green once the end is near; an open one stays dim
 function cellsOf(view) {
   const green = view.total > 0 && view.met / view.total >= GREEN_AT
@@ -316,12 +318,20 @@ function cellsOf(view) {
           : c.regressed ? { mark: '□', style: { color: 'red' } }
             : { mark: '□', style: { dimColor: true } })
   }
-  const total = Math.max(1, view.total)
-  let met = Math.round((view.met / total) * BAR_CELLS)
-  // A started ledger shows at least one filled step, an unfinished one never a full bar
-  if (view.met > 0) met = Math.max(1, met)
-  if (view.met < view.total) met = Math.min(BAR_CELLS - 1, met)
-  return Array.from({ length: BAR_CELLS }, (_, i) => (i < met ? { mark: '█', style: filled } : { mark: '░', style: { dimColor: true } }))
+  return [{ mark: pieOf(view), style: view.met ? filled : { dimColor: true } }]
+}
+
+// The pie for the share met: empty only with none met and full only with all, the quarters between
+function pieOf(view) {
+  if (!view.met) return PIE[0]
+  if (view.met >= view.total) return PIE[4]
+  const share = view.met / view.total
+  return share < 3 / 8 ? PIE[1] : share < 5 / 8 ? PIE[2] : PIE[3]
+}
+
+// The share met in whole percent, rounded down so that an unfinished ledger never reads 100
+function percentOf(view) {
+  return view.total ? Math.floor((view.met / view.total) * 100) : 0
 }
 
 // The scope's states, most pressing first. Colour is carried by the dot alone; the words stay plain or dim.
@@ -355,8 +365,10 @@ function partsOf(view, columns, several) {
   const cells = cellsOf(view)
   // Without the checker the count comes from the check boxes and may miss stale evidence: say it is approximate
   const count = (view.source === 'checker' ? '' : '≈') + L.count(view.met, view.total)
+  // Beside the pie, the percentage says what the quarters cannot
+  const percent = view.cells.length >= BAR_FROM ? L.percent(percentOf(view)) : ''
   const states = statesOf(view)
-  const progress = head.length + 1 + cells.length + 1 + count.length
+  const progress = head.length + 1 + cells.length + 1 + count.length + (percent ? percent.length + 1 : 0)
   // The parts and a bar with a space each side between them
   const width = () => progress + states.reduce((a, s) => a + stateWidth(s) + 3, 0)
   for (let i = states.length - 1; i >= 0 && width() > columns; i--) {
@@ -367,7 +379,7 @@ function partsOf(view, columns, several) {
   for (let shown = regressed ? regressed.ids.length - 1 : -1; shown >= 1 && width() > columns; shown--) {
     regressed.text = L.regressed(regressed.ids.slice(0, shown).join(', ') + ` +${regressed.ids.length - shown}`)
   }
-  return { head, cells, count, states }
+  return { head, cells, count, percent, states }
 }
 
 // The pane's title: the scope when there is one, else the word
@@ -401,7 +413,7 @@ function rowOf($, e, view, withButton, several) {
   const p = partsOf(view, columns - (withButton ? detailsWidth(e) : 0), several)
   const bar = (i) => Text({ dimColor: true, children: ['│'] })
   const cells = Text({ children: p.cells.map((c) => Text({ ...c.style, children: [c.mark] })) })
-  const first = Box({ key: `progress:${view.scope}`, flexDirection: 'row', columnGap: 1, children: [Text({ dimColor: true, children: [p.head] }), cells, Text({ children: [p.count] })] })
+  const first = Box({ key: `progress:${view.scope}`, flexDirection: 'row', columnGap: 1, children: [Text({ dimColor: true, children: [p.head] }), cells, Text({ children: [p.count] }), ...(p.percent ? [Text({ dimColor: true, children: [p.percent] })] : [])] })
   const states = p.states.map((s) => {
     const words = Text({ ...(s.dim ? { dimColor: true } : {}), children: [s.text] })
     return s.dot

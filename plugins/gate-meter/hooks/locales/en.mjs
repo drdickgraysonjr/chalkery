@@ -5,6 +5,7 @@ export default {
   // The band above the prompt
   gates: 'Gates',
   count: (met, total) => `${met} of ${total}`,
+  percent: (n) => `${n}%`,
   abandoned: (n) => `${n} abandoned`,
   allMet: 'All met',
   paused: 'Paused',

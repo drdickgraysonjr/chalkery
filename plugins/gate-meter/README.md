@@ -10,10 +10,11 @@ A row appears only when an `/unlazy` scope is bound to this session (`gate-check
 
 ```
 Gates ■■■■■■■■■□□□ 9 of 12 │ ● Waiting for a decision │ Details
+Gates ◕ 22 of 23 95% │ Details
 ```
 
 - **Label.** `Gates` alone; when several scopes are bound to the session, each row names its own, `Gates alerts-mvp`.
-- **Cells.** One per gate in ledger order up to 14 gates: filled when met, dim when open, a yellow `×` when abandoned, a red cell when a gate that was met broke on `pause.mjs resume`. From 15 gates a bar of 15 steps, `█` and dim `░`, as cache-meter draws its bar. Once 75 % of the gates are met, the filled cells or steps turn green.
+- **Cells.** One per gate in ledger order up to 14 gates: filled when met, dim when open, a yellow `×` when abandoned, a red cell when a gate that was met broke on `pause.mjs resume`. From 15 gates the cells give way to one pie that fills by the share met, `○ ◔ ◑ ◕ ●`, and the dim percentage beside the count, rounded down so an unfinished ledger never reads 100%. Once 75 % of the gates are met, the filled cells or the pie turn green.
 - **Count.** Met of total. A `≈` before it means the unlazy checker could not be asked and the check boxes in the file decided.
 - **State**, after a bar, only when there is one. Colour is carried by the dot alone; the words stay plain or dim:
 
