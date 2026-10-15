@@ -9,22 +9,22 @@ For sessions that work under [/unlazy](https://github.com/Leonxlnx/unlazy), the 
 A row appears only when an `/unlazy` scope is bound to this session (`gate-check --bind`). Without a binding the mod draws nothing.
 
 ```
-Gates ■■■■■■■■■□□□ 9 of 12 │ • Waiting for a decision │ Details
+Gates ■■■■■■■■■□□□ 9 of 12 │ ⏺ Waiting for a decision │ Details
 Gates ◕ 22 of 23 95% │ Details
 ```
 
 - **Label.** `Gates` alone; when several scopes are bound to the session, each row names its own, `Gates alerts-mvp`.
-- **Cells.** One per gate in ledger order up to 14 gates: filled when met, dim when open, a yellow `×` when abandoned, a red cell when a gate that was met broke on `pause.mjs resume`. From 15 gates the cells give way to one pie that fills by the share met, `○ ◔ ◑ ◕ ●`, and the dim percentage beside the count, rounded down so an unfinished ledger never reads 100%. Once 75 % of the gates are met, the filled cells or the pie turn green.
+- **Cells.** One per gate in ledger order up to 14 gates: filled when met, dim when open, a yellow `×` when abandoned, a red cell when a gate that was met broke on `pause.mjs resume`. From 15 gates the cells give way to one pie that fills by the share met, `◌ ◔ ◕ ⏺`, and the dim percentage beside the count, rounded down so an unfinished ledger never reads 100%. The marks are the ones a Mac's desktop draws at one size; `●` and `◑` come from larger fonts there. Once 75 % of the gates are met, the filled cells or the pie turn green.
 - **Count.** Met of total. A `≈` before it means the unlazy checker could not be asked and the check boxes in the file decided.
 - **State**, after a bar, only when there is one. Colour is carried by the dot alone; the words stay plain or dim:
 
 | Dot | Words | When |
 | --- | --- | --- |
-| yellow `•` | Waiting for a decision | `BLOCKED.md` is there: a large repair stopped the work |
-| red `•` | Regressed G3, G5 | a gate that was met broke on `pause.mjs resume` |
-| dim `◌` | Paused (dim) | this session paused after the human typed `/handoff` |
+| yellow `⏺` | Waiting for a decision | `BLOCKED.md` is there: a large repair stopped the work |
+| red `⏺` | Regressed G3, G5 | a gate that was met broke on `pause.mjs resume` |
+| dim `⏺` | Paused (dim) | this session paused after the human typed `/handoff` |
 | none | 2 abandoned (dim) | the ledger has `ABANDON` lines |
-| green `•` | All met (dim) | every gate is met |
+| green `⏺` | All met (dim) | every gate is met |
 
 When the row is too narrow, the dim counts give way first; the dotted states stay. Which gate is open next is not repeated in the row, the count already says how many are left: it is in the pane.
 
