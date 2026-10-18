@@ -694,6 +694,29 @@ for (const surface of SURFACES) {
       expect((await ui.find({ key: 'details:GATES:G5' }))?.text).not.toContain('Yehor saw')
     })
 
+    test('gate story dash title: the lead before a spaced dash names the gate, quotes in it stay whole, a later colon does not cut', async ($, on) => {
+      const dashed = ['# Gates: demo — a demo of the pane', '', 'Scope: a demo.', '',
+        gate('G1', 'x', 'PR merged — the PR is MERGED: its commits are on main', true, AUTO),
+        gate('G2', 'x', 'the «Gates» row in a new session — seen live', false, 'Yehor said «yes»'),
+        gate('G3', ' ', 'tests green: every test — even the slow ones — passes', true, 'pending'),
+        gate('G4', ' ', 'a note "a — b" names nothing', false, 'pending'),
+        gate('G5', ' ', 'the panel «Деталі — гейти» opens (a — b) — on a press', false, 'pending'),
+      ].join('\n')
+      world($, on, { files: bound(dashed), checker: checkerSays(5, [{ qid: 'GATES:G3' }, { qid: 'GATES:G4' }, { qid: 'GATES:G5' }]) })
+      await start($)
+      const ui = await pane($, surface)
+      await ui.press({ key: 'all:demo' })
+      const label = async (id: string) => (await ui.find({ key: `gate:demo/GATES:${id}` }))?.props.label
+      expect(await label('G1')).toBe('▾ ✓ G1  PR merged')
+      expect(textOf((await kids(ui, 'details:GATES:G1'))[0])).toBe('The PR is MERGED: its commits are on main')
+      expect(await label('G2')).toBe('▾ ✓ G2  The «Gates» row in a new session')
+      // An older title: its colon comes first, so it still names the gate
+      expect(await label('G3')).toBe('▾ ○ G3  Tests green')
+      // A dash inside quotes is part of the text, not a separator
+      expect(await label('G4')).toBe('▾ ○ G4  A note "a — b" names nothing')
+      expect(await label('G5')).toBe('▾ ○ G5  The panel «Деталі — гейти» opens (a — b)')
+    })
+
     test('gate story status words: how each gate stands, in words', async ($, on) => {
       world($, on, { files: bound(story + '\nABANDON: G2 the owner left\n'), checker: checkerSays(5, [{ qid: 'GATES:G3' }, { qid: 'GATES:G4', reason: 'checked but automatic evidence is stale or unbound' }, { qid: 'GATES:G5' }], ['GATES:G2']) })
       await start($)

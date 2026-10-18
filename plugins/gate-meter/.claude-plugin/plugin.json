@@ -1,6 +1,6 @@
 {
   "name": "gate-meter",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Progress of the /unlazy gates bound to this session, one quiet row above the prompt: cells per gate or a pie, met of total, and its state: waiting for a decision, regressed, paused, abandoned, all met. /gates lists them all. Joins handoff-relay, cache-meter and next-steps in one band.",
   "types": "./types/index.d.ts",
   "author": {
