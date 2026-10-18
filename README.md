@@ -19,7 +19,7 @@ Claude Code mods that draw a band above the prompt, in the terminal and in the d
 | [`handoff-relay`](plugins/handoff-relay) | A Handoff button that runs `/handoff`. It lights up from 180k tokens of context (the `threshold` option). Once the handoff document is written, the button gives way to "Handoff created". The mod brings its own `handoff` skill, so the button works out of the box. |
 | [`cache-meter`](plugins/cache-meter) | Shows how long the prompt cache stays warm and what a re-cache would cost. Keep warm stops it from going cold. Before you send into a big cold cache, it asks first. |
 | [`next-steps`](plugins/next-steps) | A What next? button that suggests up to three next prompts. The one you pick becomes a draft in the input box; you press Enter. |
-| [`gate-meter`](plugins/gate-meter) | For [/unlazy](https://github.com/Leonxlnx/unlazy): one quiet row with the progress of the gates bound to this session, a cell per gate, met of total and the next open one. `/gates` lists them all. Not in the pack. |
+| [`gate-meter`](plugins/gate-meter) | For [/unlazy](https://github.com/Leonxlnx/unlazy): one quiet row with the progress of the gates bound to this session: a cell per gate, met of total, and the state when there is one. `/gates` lists them all. An add-on, not in the pack. |
 
 Install them one by one or all at once. In any combination they form one band, always in the same order: Handoff, cache, What next?, gates.
 
@@ -49,6 +49,12 @@ Or just the one you need:
 claude plugin install cache-meter@chalkery
 ```
 
+If you work with [/unlazy](https://github.com/Leonxlnx/unlazy), add the gates row. It is an add-on rather than part of the pack, since without /unlazy it draws nothing. It takes its place under the pack's rows by itself:
+
+```bash
+claude plugin install gate-meter@chalkery
+```
+
 In the desktop app the same is under Plugins → Add plugin: the Marketplaces tab, then Add marketplace. The mods start working from the next session.
 
 When a new version is out, refresh the catalog, then each installed mod:
@@ -65,7 +71,7 @@ To remove the pack: `claude plugin uninstall primaries@chalkery`. The three mods
 
 ## Language
 
-The mods speak English and Ukrainian. Each has a `language` option: `auto` (the default), `en` or `uk`. With `auto`, the mods follow Claude's response language from `/config`, so one setting covers all three; a language the mods do not have, or none, gives English. To set it explicitly, change the option in `/config`, or pass it at install time:
+The mods speak English and Ukrainian. Each has a `language` option: `auto` (the default), `en` or `uk`. With `auto`, the mods follow Claude's response language from `/config`, so one setting covers them all; a language the mods do not have, or none, gives English. To set it explicitly, change the option in `/config`, or pass it at install time:
 
 ```bash
 claude plugin install cache-meter@chalkery --config language=uk
