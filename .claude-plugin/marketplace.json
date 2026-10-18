@@ -55,8 +55,8 @@
         "source": "git-subdir",
         "url": "https://github.com/drdickgraysonjr/chalkery.git",
         "path": "plugins/gate-meter",
-        "ref": "gate-meter--v0.2.0",
-        "sha": "6c21d47faec0a96e2307433e2b7e431ad61a1907"
+        "ref": "gate-meter--v0.2.1",
+        "sha": "12a4874964002e3a3bb9ac48221a8c39132fada2"
       },
       "description": "For /unlazy: the progress of this session's gates in one quiet row under the band. An add-on, not in the pack."
     }
