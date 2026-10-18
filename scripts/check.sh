@@ -39,7 +39,7 @@ check "handoff phase script tests pass" python3 -m unittest plugins/handoff-rela
 check "shared files match their copies" scripts/sync-shared.sh --check
 check "changed mods have a new version" scripts/check-version-bump.sh
 check "the catalog points at the latest releases" scripts/pin-releases.sh --check
-check "primaries installs from this checkout's catalog" scripts/trial-install.sh ./
+check "primaries and gate-meter install from this checkout's catalog" scripts/trial-install.sh ./
 
 if [ -n "$failed" ]; then
   echo "Failed checks:$failed"
