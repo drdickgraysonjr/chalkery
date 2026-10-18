@@ -124,7 +124,7 @@ docs/                             the screenshots in the READMEs
 
 **Languages.** A mod's code holds no text a person sees: it reads it from `locales/<language>.mjs`. A new language is one more file in each mod, a line in `LOCALES` and a pattern in `shared/i18n.mjs`. Each mod's tests check that every locale has the same keys.
 
-**Checks.** `scripts/check.sh` runs them all: it validates the manifests, runs each mod's tests and the phase script's tests, compares the shared copies, checks versions against release tags, checks that the catalog points at the latest release tags and installs `primaries` from the catalog into a throwaway home folder. CI runs the same on every push and pull request with Claude Code 2.1.289, the oldest version this README promises, and every Monday with the newest one; GitHub emails you when the weekly run fails. To check a single mod:
+**Checks.** `scripts/check.sh` runs them all: it validates the manifests, runs each mod's tests and the phase script's tests, compares the shared copies, checks versions against release tags, checks that the catalog points at the latest release tags and installs `primaries` from the catalog into a throwaway home folder, with `gate-meter` next to it. CI runs the same on every push and pull request with Claude Code 2.1.289, the oldest version this README promises, and every Monday with the newest one; GitHub emails you when the weekly run fails. To check a single mod:
 
 ```bash
 claude plugin validate plugins/cache-meter && claude plugin test plugins/cache-meter
