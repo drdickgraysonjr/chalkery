@@ -22,8 +22,8 @@
         "source": "git-subdir",
         "url": "https://github.com/drdickgraysonjr/chalkery.git",
         "path": "plugins/handoff-relay",
-        "ref": "handoff-relay--v0.3.0",
-        "sha": "f8833ab37516f4cdf30be2a6459cbddc0f9a6cad"
+        "ref": "handoff-relay--v0.3.1",
+        "sha": "6c21d47faec0a96e2307433e2b7e431ad61a1907"
       },
       "description": "A Handoff button above the prompt, lit from 180k tokens of context."
     },
@@ -33,8 +33,8 @@
         "source": "git-subdir",
         "url": "https://github.com/drdickgraysonjr/chalkery.git",
         "path": "plugins/cache-meter",
-        "ref": "cache-meter--v0.3.0",
-        "sha": "f8833ab37516f4cdf30be2a6459cbddc0f9a6cad"
+        "ref": "cache-meter--v0.3.1",
+        "sha": "6c21d47faec0a96e2307433e2b7e431ad61a1907"
       },
       "description": "Prompt cache status: how long it stays warm, what a re-cache costs, Keep warm."
     },
@@ -44,10 +44,21 @@
         "source": "git-subdir",
         "url": "https://github.com/drdickgraysonjr/chalkery.git",
         "path": "plugins/next-steps",
-        "ref": "next-steps--v1.3.0",
-        "sha": "f8833ab37516f4cdf30be2a6459cbddc0f9a6cad"
+        "ref": "next-steps--v1.3.1",
+        "sha": "6c21d47faec0a96e2307433e2b7e431ad61a1907"
       },
       "description": "A What next? button: up to three next prompts on press."
+    },
+    {
+      "name": "gate-meter",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/drdickgraysonjr/chalkery.git",
+        "path": "plugins/gate-meter",
+        "ref": "gate-meter--v0.2.0",
+        "sha": "6c21d47faec0a96e2307433e2b7e431ad61a1907"
+      },
+      "description": "For /unlazy: the progress of this session's gates in one quiet row under the band. An add-on, not in the pack."
     }
   ]
 }
