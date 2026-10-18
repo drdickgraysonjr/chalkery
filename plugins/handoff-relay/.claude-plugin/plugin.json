@@ -1,6 +1,6 @@
 {
   "name": "handoff-relay",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "A Handoff button above the prompt: runs /handoff and lights up from 180k tokens of context (the threshold option). Joins cache-meter and next-steps in one band.",
   "types": "./types/index.d.ts",
   "author": {

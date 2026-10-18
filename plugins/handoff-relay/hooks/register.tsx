@@ -68,10 +68,20 @@ const handedOff = atom({ plugin: 'handoff-relay', key: 'handedOff' } as const, n
 
 const isDone = (result: { deny?: unknown; isError?: boolean }) => result.deny === undefined && result.isError !== true
 
-// Shared by both card tools; each hook is typed by its own tool.
-const markHandedOff = async ($: Engine, title: unknown, result: { deny?: unknown; isError?: boolean }) => {
+// Shared by both session tools; each hook is typed by its own tool. isStarted: the next session
+// already runs (start_session with user_asked), so there is no card to press.
+const markHandedOff = async (
+  $: Engine,
+  title: unknown,
+  result: { deny?: unknown; isError?: boolean },
+  isStarted = false,
+) => {
   if (isDone(result) && (await read($, isHandoffTurn))) {
-    await update($, handedOff, () => ({ title: typeof title === 'string' && title ? title : L.nextPhase, hasCard: true }))
+    await update($, handedOff, () => ({
+      title: typeof title === 'string' && title ? title : L.nextPhase,
+      hasCard: true,
+      isStarted,
+    }))
   }
 }
 
@@ -145,15 +155,16 @@ export const register: Register = (on, options) => {
 
   // The next phase's card created during the handoff turn (the desktop app) hands off at once, under
   // the card's title: pressing again would overwrite the document just written and make a second card.
-  // start_session is there for when an account gets it instead of the card.
+  // start_session replaces the card on accounts that have it: user_asked starts the session at once,
+  // own_initiative leaves a card like spawn_task.
   on('tool.call', { tool: 'mcp__ccd_session__spawn_task' }, async ($, e, next) => {
     const result = await next(e)
     await markHandedOff($, e.title, result)
     return result
   })
-  on('tool.call', { tool: 'mcp__ccd_session_mgmt__start_session' }, async ($, e, next) => {
+  on('tool.call', { tool: 'mcp__ccd_session__start_session' }, async ($, e, next) => {
     const result = await next(e)
-    await markHandedOff($, e.title, result)
+    await markHandedOff($, e.title, result, (e as { initiation?: unknown }).initiation === 'user_asked')
     return result
   })
 
@@ -201,7 +212,7 @@ export const register: Register = (on, options) => {
 
     if (done !== null) {
       // On one line when it fits; otherwise the hint goes to a second line rather than breaking mid-word.
-      const hint = done.hasCard ? L.launchHint : L.continueHint
+      const hint = done.isStarted ? L.startedHint : done.hasCard ? L.launchHint : L.continueHint
       const head = `${L.created}${done.title}.`
       const isOneLine = head.length + 1 + hint.length <= e.props.bodyColumns
 
