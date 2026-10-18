@@ -6,7 +6,7 @@ English | [Українська](README.uk.md)
 
 A chalkery is where the chalk lives: a home for Claude Code mods that draw above the prompt.
 
-Claude Code mods that draw a band above the prompt, in the terminal and in the desktop app's Code tab: three for every session, and a fourth for sessions under /unlazy.
+Claude Code mods that draw a band above the prompt, in the terminal and in the desktop app's Code tab: three mods in a pack for every session, and add-ons for particular workflows.
 
 ![The band in the desktop app's Code tab: Handoff with the context size, the cache status with Keep warm, and What next?](docs/band-desktop-en.png)
 
@@ -14,14 +14,25 @@ Claude Code mods that draw a band above the prompt, in the terminal and in the d
 
 *The screenshots were taken with the `threshold` option lowered, so Handoff lights up below 180k.*
 
+## The pack: primaries
+
+Three mods for every session. Install them together as the `primaries` pack, or one by one.
+
 | Mod | What it does |
 | --- | --- |
 | [`handoff-relay`](plugins/handoff-relay) | A Handoff button that runs `/handoff`. It lights up from 180k tokens of context (the `threshold` option). Once the handoff document is written, the button gives way to "Handoff created". The mod brings its own `handoff` skill, so the button works out of the box. |
 | [`cache-meter`](plugins/cache-meter) | Shows how long the prompt cache stays warm and what a re-cache would cost. Keep warm stops it from going cold. Before you send into a big cold cache, it asks first. |
 | [`next-steps`](plugins/next-steps) | A What next? button that suggests up to three next prompts. The one you pick becomes a draft in the input box; you press Enter. |
-| [`gate-meter`](plugins/gate-meter) | For [/unlazy](https://github.com/Leonxlnx/unlazy): one quiet row with the progress of the gates bound to this session: a cell per gate, met of total, and the state when there is one. `/gates` lists them all. An add-on, not in the pack. |
 
-Install them one by one or all at once. In any combination they form one band, always in the same order: Handoff, cache, What next?, gates.
+## Add-ons
+
+Add-ons join the same band, under the pack's rows, but only make sense with a particular tool, so they are not in the pack. The pack works without them; add the one you need on its own.
+
+| Add-on | What it does |
+| --- | --- |
+| [`gate-meter`](plugins/gate-meter) | For [/unlazy](https://github.com/Leonxlnx/unlazy): one quiet row with the progress of the gates bound to this session: a cell per gate, met of total, and the state when there is one. Details opens the list in the side panel; `/gates` prints it. |
+
+In any combination the mods and add-ons form one band, always in the same order: Handoff, cache, What next?, then the add-ons.
 
 ## Requirements
 
@@ -37,25 +48,33 @@ Add the marketplace first:
 claude plugin marketplace add drdickgraysonjr/chalkery
 ```
 
+In the desktop app the same is under Plugins → Add plugin: the Marketplaces tab, then Add marketplace. The mods start working from the next session.
+
+### The pack
+
 All three mods in one command. The pack is called primaries: three mods, like three primary colours.
 
 ```bash
 claude plugin install primaries@chalkery
 ```
 
-Or just the one you need:
+### One mod
+
+Just the one you need:
 
 ```bash
 claude plugin install cache-meter@chalkery
 ```
 
-If you work with [/unlazy](https://github.com/Leonxlnx/unlazy), add the gates row. It is an add-on rather than part of the pack, since without /unlazy it draws nothing. It takes its place under the pack's rows by itself:
+### An add-on
+
+Each add-on installs on its own, with or without the pack, and takes its place under the pack's rows by itself. If you work with [/unlazy](https://github.com/Leonxlnx/unlazy), add the gates row; without /unlazy it draws nothing:
 
 ```bash
 claude plugin install gate-meter@chalkery
 ```
 
-In the desktop app the same is under Plugins → Add plugin: the Marketplaces tab, then Add marketplace. The mods start working from the next session.
+### Updating and removing
 
 When a new version is out, refresh the catalog, then each installed mod:
 
@@ -106,7 +125,7 @@ Most often it is the old-version error above.
 ## For authors
 
 ```
-.claude-plugin/marketplace.json   the catalog: the pack and three mods, each at its release tag
+.claude-plugin/marketplace.json   the catalog: the pack, its three mods and the add-ons, each at its release tag
 plugins/<mod>/                    each mod stands alone and installs on its own
 plugins/<mod>/hooks/locales/      en.mjs and uk.mjs: every word the mod shows a person
 plugins/handoff-relay/skills/     the handoff skill and its phase script (python3, with tests)
