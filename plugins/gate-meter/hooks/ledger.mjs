@@ -211,19 +211,46 @@ export function clip(text, max) {
 const capital = (s) => s.charAt(0).toLocaleUpperCase() + s.slice(1)
 // Inline code marks say nothing to a person reading the pane
 const plain = (s) => String(s).replace(/`([^`]*)`/g, '$1').replace(/\s+/g, ' ').trim()
-// A gate title's lead before its first colon is its name when it is this short
+// A gate title's lead before its separator is its name when it is this short
 const MAX_NAME = 60
+// What parts a gate's short name from its details: a spaced dash, or a colon as in older titles
+const DASHES = [' — ', ' – ']
+const OPEN = '«(['
+const CLOSE = '»)]'
 
 /**
- * A gate title as a short name and the rest of its sentence: the part before the first colon when
- * there is a short one, capitalised, and what follows it; without one, the whole title and no rest.
+ * Where a title's short name ends: at the first spaced dash or colon outside quotes and brackets,
+ * whichever comes first, so a name may quote «a word» and a colon written later in the details
+ * does not cut it. Returns the separator's start and length, or null without one.
+ * @param {string} text
+ */
+function nameEnd(text) {
+  let depth = 0
+  let straight = false
+  for (let i = 0; i < text.length && i <= MAX_NAME; i++) {
+    const ch = text[i]
+    if (ch === '"') straight = !straight
+    else if (OPEN.includes(ch)) depth++
+    else if (CLOSE.includes(ch)) depth = Math.max(0, depth - 1)
+    if (depth > 0 || straight || i === 0) continue
+    const dash = DASHES.find((d) => text.startsWith(d, i))
+    if (dash) return { at: i, length: dash.length }
+    if (ch === ':' && /\s/.test(text[i + 1] ?? '')) return { at: i, length: 1 }
+  }
+  return null
+}
+
+/**
+ * A gate title as a short name and the rest of its sentence: the part before its first spaced dash
+ * (or colon) when there is a short one, capitalised, and what follows it; without one, the whole
+ * title and no rest.
  * @param {string} title
  */
 export function splitTitle(title) {
   const text = plain(title)
-  const at = text.search(/:\s/)
-  if (at > 0 && at <= MAX_NAME && !/[(«"]/.test(text.slice(0, at))) {
-    return { name: capital(text.slice(0, at).trim()), rest: capital(text.slice(at + 1).trim()) }
+  const end = nameEnd(text)
+  if (end) {
+    return { name: capital(text.slice(0, end.at).trim()), rest: capital(text.slice(end.at + end.length).trim()) }
   }
   return { name: capital(text), rest: '' }
 }
