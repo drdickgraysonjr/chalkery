@@ -10,6 +10,7 @@ export default {
   created: 'Handoff створено: ',
   nextPhase: 'наступна фаза',
   launchHint: 'Запускай через Start locally або іншу кнопку на картці.',
+  startHint: 'Запускай кнопкою Start на картці.',
   startedHint: 'Наступна сесія вже працює.',
   continueHint: 'Продовжуй у новій сесії з цього документа.',
   failed: (error) => `Handoff не запустився: ${error}`,

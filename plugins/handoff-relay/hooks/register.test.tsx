@@ -252,7 +252,8 @@ for (const surface of SURFACES) {
 
       expect(await ui.find({ key: 'handoff' })).toBeUndefined()
       const line = await ui.find({ key: 'handed-off' })
-      expect(line?.text).toContain('Start locally')
+      expect(line?.text).toContain('Запускай кнопкою Start на картці.')
+      expect(line?.text).not.toContain('Start locally')
       expect(line?.text).not.toContain('вже працює')
     })
 

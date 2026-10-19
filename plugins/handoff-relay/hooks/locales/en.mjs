@@ -10,6 +10,7 @@ export default {
   created: 'Handoff created: ',
   nextPhase: 'next phase',
   launchHint: 'Start it with Start locally or another button on the card.',
+  startHint: 'Start it with the Start button on the card.',
   startedHint: 'The next session is already running.',
   continueHint: 'Continue in a new session from that document.',
   failed: (error) => `Handoff did not start: ${error}`,

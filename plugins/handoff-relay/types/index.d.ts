@@ -2,7 +2,7 @@
 export type Tokens = number | null
 
 // The phase handed off: the card's title, or the document's name when no card was made.
-export type HandedOff = { title: string; hasCard: boolean; isStarted?: boolean } | null
+export type HandedOff = { title: string; hasCard: boolean; isStarted?: boolean; isSessionCard?: boolean } | null
 
 // What handoff-relay reads from cache-meter's state (`cache-meter.cache`) when that mod is installed.
 // Not declared in PluginState: it is cache-meter's contract, not ours.

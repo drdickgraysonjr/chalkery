@@ -69,18 +69,21 @@ const handedOff = atom({ plugin: 'handoff-relay', key: 'handedOff' } as const, n
 const isDone = (result: { deny?: unknown; isError?: boolean }) => result.deny === undefined && result.isError !== true
 
 // Shared by both session tools; each hook is typed by its own tool. isStarted: the next session
-// already runs (start_session with user_asked), so there is no card to press.
+// already runs (start_session with user_asked), so there is no card to press. isSessionCard: the card
+// came from start_session, whose buttons differ from spawn_task's.
 const markHandedOff = async (
   $: Engine,
   title: unknown,
   result: { deny?: unknown; isError?: boolean },
   isStarted = false,
+  isSessionCard = false,
 ) => {
   if (isDone(result) && (await read($, isHandoffTurn))) {
     await update($, handedOff, () => ({
       title: typeof title === 'string' && title ? title : L.nextPhase,
       hasCard: true,
       isStarted,
+      isSessionCard,
     }))
   }
 }
@@ -164,7 +167,8 @@ export const register: Register = (on, options) => {
   })
   on('tool.call', { tool: 'mcp__ccd_session__start_session' }, async ($, e, next) => {
     const result = await next(e)
-    await markHandedOff($, e.title, result, (e as { initiation?: unknown }).initiation === 'user_asked')
+    const isStarted = (e as { initiation?: unknown }).initiation === 'user_asked'
+    await markHandedOff($, e.title, result, isStarted, !isStarted)
     return result
   })
 
@@ -212,7 +216,13 @@ export const register: Register = (on, options) => {
 
     if (done !== null) {
       // On one line when it fits; otherwise the hint goes to a second line rather than breaking mid-word.
-      const hint = done.isStarted ? L.startedHint : done.hasCard ? L.launchHint : L.continueHint
+      const hint = done.isStarted
+        ? L.startedHint
+        : done.isSessionCard
+          ? L.startHint
+          : done.hasCard
+            ? L.launchHint
+            : L.continueHint
       const head = `${L.created}${done.title}.`
       const isOneLine = head.length + 1 + hint.length <= e.props.bodyColumns
 
