@@ -70,6 +70,28 @@ class PhaseTable(unittest.TestCase):
             open(os.path.join(d, "Назва — H2.md"), "w").close()
             self.assertTrue(resolve(title="Назва H2", handoffs_dir=d)["previous_exists"])
 
+    def test_chain_line_matches_card_phase(self):
+        # A new chain: the card says H2, so the next session's chain line must say H2 too.
+        got = resolve(title="Ало", handoffs_dir="/vault/handoffs", lang="uk")
+        self.assertEqual(got["card_title"], "Ало H2")
+        self.assertEqual(got["chain_line"], "Ланцюжок: Ало, фаза H2, попередній: /vault/handoffs/Ало — H2.md")
+
+    def test_chain_line_from_explicit_chain(self):
+        got = resolve(chain="Естафета хендофів", phase=3, handoffs_dir="/h")
+        self.assertEqual(got["chain_line"], "Chain: Естафета хендофів, phase H4, previous: /h/Естафета хендофів — H4.md")
+
+    def test_chain_line_keeps_base_but_safe_file(self):
+        got = resolve(title="Plan: A/B тест H3", handoffs_dir="/h")
+        self.assertEqual(got["chain_line"], "Chain: Plan: A/B тест, phase H4, previous: /h/Plan- A-B тест — H4.md")
+
+    def test_chain_line_path_is_absolute(self):
+        got = resolve(title="Назва", handoffs_dir=".claude/handoffs")
+        path = got["chain_line"].split("previous: ", 1)[1]
+        self.assertTrue(os.path.isabs(path), path)
+
+    def test_chain_line_without_folder_names_the_file(self):
+        self.assertEqual(resolve(title="Назва")["chain_line"], "Chain: Назва, phase H2, previous: Назва — H2.md")
+
     def test_empty_title_rejected(self):
         with self.assertRaises(ValueError):
             resolve(title="   ")

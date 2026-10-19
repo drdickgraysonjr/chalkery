@@ -4,7 +4,8 @@
 
 Prints JSON: base, phase (the current N), next_phase, card_title (at most 60
 characters), file (the next handoff's file name), previous (the current phase's
-file, or null), previous_exists. Standard library only.
+file, or null), previous_exists, chain_line (the first line of the next phase's
+start prompt, in --lang). Standard library only.
 """
 import argparse
 import json
@@ -15,6 +16,10 @@ import sys
 SUFFIX = re.compile(r"\s+H([1-9]\d*)$")
 FORBIDDEN = re.compile(r'[*"\\/<>:|?#^\[\]]')
 MAX_TITLE = 60
+CHAIN_LINE = {
+    "en": "Chain: {base}, phase H{phase}, previous: {path}",
+    "uk": "Ланцюжок: {base}, фаза H{phase}, попередній: {path}",
+}
 
 
 def parse(title):
@@ -37,7 +42,7 @@ def file_name(base, phase):
     return f"{safe} — H{phase}.md"
 
 
-def resolve(title=None, chain=None, phase=None, handoffs_dir=None):
+def resolve(title=None, chain=None, phase=None, handoffs_dir=None, lang="en"):
     if chain:
         base, current = " ".join(chain.split()), phase or 1
     else:
@@ -47,14 +52,18 @@ def resolve(title=None, chain=None, phase=None, handoffs_dir=None):
     nxt = current + 1
     previous = file_name(base, current) if current >= 2 else None
     exists = bool(previous and handoffs_dir and os.path.isfile(os.path.join(handoffs_dir, previous)))
+    nxt_file = file_name(base, nxt)
+    # The next session may run in another folder (its own worktree), so the path is absolute.
+    path = os.path.join(os.path.abspath(handoffs_dir), nxt_file) if handoffs_dir else nxt_file
     return {
         "base": base,
         "phase": current,
         "next_phase": nxt,
         "card_title": card_title(base, nxt),
-        "file": file_name(base, nxt),
+        "file": nxt_file,
         "previous": previous,
         "previous_exists": exists,
+        "chain_line": CHAIN_LINE[lang].format(base=base, phase=nxt, path=path),
     }
 
 
@@ -63,12 +72,13 @@ def main(argv=None):
     ap.add_argument("--title", help="the session title")
     ap.add_argument("--chain", help="the chain base, from the start prompt's chain line")
     ap.add_argument("--phase", type=int, help="the current phase N, from the same line")
-    ap.add_argument("--handoffs-dir", help="the handoffs folder, to check previous")
+    ap.add_argument("--handoffs-dir", help="the handoffs folder, to check previous and build chain_line")
+    ap.add_argument("--lang", choices=sorted(CHAIN_LINE), default="en", help="the handoff document's language")
     args = ap.parse_args(argv)
     if args.phase is not None and args.phase < 1:
         ap.error("--phase must be at least 1")
     try:
-        out = resolve(args.title, args.chain, args.phase, args.handoffs_dir)
+        out = resolve(args.title, args.chain, args.phase, args.handoffs_dir, args.lang)
     except ValueError as err:
         print(f"phase.py: {err}", file=sys.stderr)
         return 2
