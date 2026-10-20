@@ -99,6 +99,7 @@ const props = {
 }
 
 const SPAWN = 'mcp__ccd_session__spawn_task' as const
+const START = 'mcp__ccd_session__start_session' as const
 const TITLE = 'Естафета хендофів H3'
 
 const turnEnd = { answer: '', durationMs: 1, isAborted: false, turnId: 't', reason: 'answer' as const }
@@ -213,6 +214,47 @@ for (const surface of SURFACES) {
 
       expect(await ui.find({ key: 'handoff' })).toBeUndefined()
       expect(await ui.find({ text: /Handoff створено/ })).toBeDefined()
+    })
+
+    test('a session started at once (user_asked): the band says it already runs', async ($, on) => {
+      engineRow(on)
+      on('command.run', () => ({ text: '' }))
+      on('tool.call', { tool: START }, () => ({ result: 'started' }))
+      on('turn.complete', () => ({ text: '' }))
+      const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
+
+      await ui.press({ key: 'handoff' })
+      await $.tool.call({ tool: START, initiation: 'user_asked', title: TITLE, prompt: 'p', background: 'b' })
+      await $.turn.complete(turnEnd)
+
+      expect(await ui.find({ key: 'handoff' })).toBeUndefined()
+      const line = await ui.find({ key: 'handed-off' })
+      expect(line?.text).toContain(`Handoff створено: ${TITLE}.`)
+      expect(line?.text).toContain('Наступна сесія вже працює.')
+      expect(line?.text).not.toContain('Start locally')
+    })
+
+    test('a refused start, then a proposed card: the band points to the card', async ($, on) => {
+      engineRow(on)
+      on('command.run', () => ({ text: '' }))
+      on('tool.call', { tool: START }, (_$, e) =>
+        (e as { initiation?: string }).initiation === 'user_asked'
+          ? { result: 'refused', isError: true }
+          : { result: 'proposed' },
+      )
+      on('turn.complete', () => ({ text: '' }))
+      const ui = await $.ui.mount({ plugin: 'handoff-relay', surface, component: 'AbovePrompt', props })
+
+      await ui.press({ key: 'handoff' })
+      await $.tool.call({ tool: START, initiation: 'user_asked', title: TITLE, prompt: 'p', background: 'b' })
+      await $.tool.call({ tool: START, initiation: 'own_initiative', title: TITLE, prompt: 'p', background: 'b' })
+      await $.turn.complete(turnEnd)
+
+      expect(await ui.find({ key: 'handoff' })).toBeUndefined()
+      const line = await ui.find({ key: 'handed-off' })
+      expect(line?.text).toContain('Запускай кнопкою Start на картці.')
+      expect(line?.text).not.toContain('Start locally')
+      expect(line?.text).not.toContain('вже працює')
     })
 
     test('a card outside a handoff keeps the button', async ($, on) => {
